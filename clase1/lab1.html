@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laboratorio · Tu primera Máquina Virtual en VirtualBox</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --amber-dim:#8a5b1f;
+  --cyan:#5ccfe6;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(255,180,84,0.06), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(92,207,230,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--amber); color:#1c1204; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--amber); box-shadow:0 0 6px var(--amber); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#steps-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid var(--amber); color:var(--amber); font-family:var(--mono); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--amber-dim), var(--amber)); box-shadow:0 0 8px var(--amber); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--amber); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+.accent-red{ color:var(--red); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,180,84,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#8a6a2f; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3.6rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--amber); }
+
+/* step layout */
+.step-header{ display:flex; align-items:center; gap:18px; margin-bottom:18px; }
+.step-num{
+  font-family:var(--mono); font-size:1.6rem; font-weight:700; color:var(--amber);
+  border:1px solid var(--amber-dim); border-radius:8px; width:56px; height:56px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:16px; }
+.card-min i{ color:var(--cyan); font-size:1.2rem; margin-bottom:6px; display:block; }
+.card-min h4{ font-size:.95rem; margin-bottom:3px; }
+.card-min p{ font-size:.82rem; color:var(--text-dim); margin:0; }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.85rem; color:var(--cyan); overflow-x:auto;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-red{ color:var(--red); }
+
+table.spec{ width:100%; border-collapse:collapse; font-size:.88rem; }
+table.spec th{ font-family:var(--mono); text-transform:uppercase; font-size:.72rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.spec td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+
+/* completion */
+.btn-done{
+  font-family:var(--mono); font-size:.85rem; border-radius:6px; padding:10px 18px;
+  border:1px solid var(--green-dim); color:var(--green); background:transparent; transition:.2s;
+}
+.btn-done:hover{ background:var(--green); color:#04120a; }
+.btn-done.done{ background:var(--green); color:#04120a; cursor:default; }
+.btn-done.done i{ margin-right:6px; }
+
+.warn-box{ border-color:var(--red) !important; }
+.warn-box .term-tag{ border-color:var(--red); color:var(--red); }
+
+.accordion-button{ background:var(--bg-1) !important; color:var(--text) !important; font-family:var(--mono); font-size:.9rem; }
+.accordion-button:not(.collapsed){ color:var(--amber) !important; box-shadow:none !important; }
+.accordion-button::after{ filter:invert(1); }
+.accordion-body{ background:var(--bg-2); color:var(--text-dim); font-size:.9rem; }
+.accordion-item{ border-color:var(--panel-border) !important; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--amber); border-color:var(--amber-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--amber); box-shadow:0 0 6px var(--amber); }
+.slide-dots span.step-done{ background:var(--green); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--amber) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:2rem; }
+  h1.title{ font-size:1.5rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .step-header{ flex-direction:column; align-items:flex-start; gap:8px; }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> LAB · VIRTUALBOX <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="steps-badge">0 / 0 PASOS COMPLETADOS</div>
+  <div class="seg"><i class="fa-solid fa-server"></i> Módulo práctico independiente</div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+let totalSteps = 0;
+function addSlide(html, opts={}){
+  slides.push({html, isStep: opts.isStep || false});
+  if(opts.isStep) totalSteps++;
+}
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Montando módulo de laboratorio ....... virtualbox_lab.iso</div>
+    <div>[ <span class="ok">OK</span> ] Verificando virtualización de hardware</div>
+    <div>[ <span class="ok">OK</span> ] Preparando 8 estaciones de trabajo</div>
+  </div>
+  <div class="eyebrow">laboratorio práctico · módulo independiente</div>
+  <h1 class="mega">Tu primera<br><span class="kernel">Máquina Virtual</span></h1>
+  <h2 class="subtitle" style="margin-top:1rem;">De cero a un sistema operativo instalado, paso a paso, en VirtualBox</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> para navegar · marcá cada paso como completado a medida que avanzás
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 1 · REQUISITOS PREVIOS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">antes de empezar</div>
+  <h1 class="title">Lo que necesitás <span class="accent">tener listo</span></h1>
+  <div class="grid-cards">
+    <div class="card-min"><i class="fa-solid fa-download"></i><h4>VirtualBox instalado</h4><p>Última versión estable desde virtualbox.org</p></div>
+    <div class="card-min"><i class="fa-solid fa-compact-disc"></i><h4>Imagen ISO</h4><p>El SO que vas a instalar (indicado por el docente)</p></div>
+    <div class="card-min"><i class="fa-solid fa-hard-drive"></i><h4>Espacio en disco</h4><p>Al menos 30–40 GB libres</p></div>
+    <div class="card-min"><i class="fa-solid fa-microchip"></i><h4>Virtualización activa</h4><p>Intel VT-x / AMD-V habilitado en BIOS-UEFI</p></div>
+  </div>
+  <div class="panel warn-box" style="margin-top:18px;">
+    <div class="term-tag">cómo verificar la virtualización</div>
+    <p style="margin:0;"><b>Windows:</b> Administrador de tareas → pestaña Rendimiento → CPU → "Virtualización: Habilitada".<br>
+    <b>Linux:</b> ejecutar <code>egrep -c '(vmx|svm)' /proc/cpuinfo</code> — si el resultado es mayor a 0, está disponible.</p>
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 2 · PASO 1: INSTALAR VIRTUALBOX ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="step-header"><div class="step-num">1</div><div><h1 class="title" style="margin:0;">Instalar <span class="accent">VirtualBox</span></h1><h2 class="subtitle" style="margin:0;">El hipervisor que va a alojar tu VM</h2></div></div>
+  <div class="panel">
+    <div class="term-tag">pasos</div>
+    <ul class="checklist">
+      <li>Ir a <b>virtualbox.org → Downloads</b></li>
+      <li>Descargar el instalador para tu sistema operativo (Windows / macOS / Linux)</li>
+      <li>Ejecutar el instalador con permisos de administrador</li>
+      <li>Aceptar las advertencias sobre interfaces de red (es normal, puede reiniciar la conexión un instante)</li>
+      <li>Al finalizar, abrir "Oracle VM VirtualBox Manager"</li>
+    </ul>
+  </div>
+  <div style="margin-top:18px; text-align:right;">
+    <button class="btn-done" id="btn-step-1" onclick="markStep(1)"><i class="fa-regular fa-circle"></i> Marcar paso como completado</button>
+  </div>
+</div>
+`, {isStep:true});
+
+/* ---------- SLIDE 3 · PASO 2: DESCARGAR LA ISO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="step-header"><div class="step-num">2</div><div><h1 class="title" style="margin:0;">Descargar la <span class="accent">imagen ISO</span></h1><h2 class="subtitle" style="margin:0;">El sistema operativo que vas a instalar dentro de la VM</h2></div></div>
+  <div class="panel">
+    <div class="term-tag">pasos</div>
+    <ul class="checklist">
+      <li>Descargar el archivo <code>.iso</code> desde el sitio oficial del SO indicado por el docente</li>
+      <li>Verificar que la descarga se haya completado (comparar tamaño o checksum si está disponible)</li>
+      <li>Guardar el archivo en una carpeta fácil de ubicar, por ejemplo <code>Documentos/ISOs</code></li>
+      <li><b>No</b> es necesario grabarlo a un DVD ni extraerlo: VirtualBox lo monta directamente</li>
+    </ul>
+  </div>
+  <div style="margin-top:18px; text-align:right;">
+    <button class="btn-done" id="btn-step-2" onclick="markStep(2)"><i class="fa-regular fa-circle"></i> Marcar paso como completado</button>
+  </div>
+</div>
+`, {isStep:true});
+
+/* ---------- SLIDE 4 · PASO 3: CREAR LA VM ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="step-header"><div class="step-num">3</div><div><h1 class="title" style="margin:0;">Crear la <span class="accent">máquina virtual</span></h1><h2 class="subtitle" style="margin:0;">El asistente de creación de VirtualBox</h2></div></div>
+  <div class="panel">
+    <div class="term-tag">asistente "Nueva"</div>
+    <ul class="checklist">
+      <li>Click en <b>"Nueva"</b> en el VirtualBox Manager</li>
+      <li>Nombre de la VM (ej: <code>SO-Ubuntu-Fernando</code>) — VirtualBox suele detectar el tipo/versión por el nombre</li>
+      <li>Verificar que <b>Tipo</b> y <b>Versión</b> coincidan con el SO real (ej: Linux / Ubuntu 64-bit)</li>
+      <li>Elegir la carpeta donde se guardarán los archivos de la VM</li>
+    </ul>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">tip</div>
+    <p style="margin:0; color:var(--text-dim);">Si elegís mal el "Tipo/Versión", VirtualBox va a sugerir valores de RAM y disco poco apropiados. Prestale atención a este paso.</p>
+  </div>
+  <div style="margin-top:18px; text-align:right;">
+    <button class="btn-done" id="btn-step-3" onclick="markStep(3)"><i class="fa-regular fa-circle"></i> Marcar paso como completado</button>
+  </div>
+</div>
+`, {isStep:true});
+
+/* ---------- SLIDE 5 · PASO 4: ASIGNAR RAM Y CPU ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="step-header"><div class="step-num">4</div><div><h1 class="title" style="margin:0;">Asignar <span class="accent">RAM y CPU</span></h1><h2 class="subtitle" style="margin:0;">Repartir los recursos del equipo anfitrión</h2></div></div>
+  <div class="panel">
+    <div class="term-tag">referencia rápida</div>
+    <table class="spec">
+      <tr><th>Sistema operativo invitado</th><th>RAM recomendada</th><th>CPUs</th></tr>
+      <tr><td>Windows 10/11</td><td>4 GB</td><td>2</td></tr>
+      <tr><td>Ubuntu Desktop</td><td>2–4 GB</td><td>2</td></tr>
+      <tr><td>Ubuntu Server / Debian (sin GUI)</td><td>1–2 GB</td><td>1–2</td></tr>
+      <tr><td>Linux Mint / distros livianas</td><td>2 GB</td><td>1–2</td></tr>
+    </table>
+  </div>
+  <div class="panel warn-box" style="margin-top:16px;">
+    <div class="term-tag">regla de oro</div>
+    <p style="margin:0;">Nunca asignes más de la <b>mitad</b> de la RAM física del equipo anfitrión a una sola VM.</p>
+  </div>
+  <div style="margin-top:18px; text-align:right;">
+    <button class="btn-done" id="btn-step-4" onclick="markStep(4)"><i class="fa-regular fa-circle"></i> Marcar paso como completado</button>
+  </div>
+</div>
+`, {isStep:true});
+
+/* ---------- SLIDE 6 · PASO 5: DISCO VIRTUAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="step-header"><div class="step-num">5</div><div><h1 class="title" style="margin:0;">Crear el <span class="accent">disco virtual</span></h1><h2 class="subtitle" style="margin:0;">Dónde va a vivir el sistema de archivos del invitado</h2></div></div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">opciones del asistente</div>
+        <ul class="checklist">
+          <li>Crear un disco duro virtual ahora</li>
+          <li>Tipo de archivo: <b>VDI</b> (formato nativo de VirtualBox)</li>
+          <li>Almacenamiento: <b>reservado dinámicamente</b> (crece según se necesita)</li>
+          <li>Tamaño: 25 GB (liviano) a 60 GB (Windows con apps)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="code-block">
+<span class="c-dim"># dinámico vs. fijo</span><br>
+<span class="c-green">Dinámico</span> → ocupa poco al inicio, crece con el uso<br>
+<span class="c-amber">Fijo</span> → reserva todo el espacio de una vez, algo más rápido<br>
+<span class="c-dim"># para clase: dinámico es suficiente</span>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:18px; text-align:right;">
+    <button class="btn-done" id="btn-step-5" onclick="markStep(5)"><i class="fa-regular fa-circle"></i> Marcar paso como completado</button>
+  </div>
+</div>
+`, {isStep:true});
+
+/* ---------- SLIDE 7 · PASO 6: MONTAR ISO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="step-header"><div class="step-num">6</div><div><h1 class="title" style="margin:0;">Montar la <span class="accent">ISO de arranque</span></h1><h2 class="subtitle" style="margin:0;">Configurar el orden de arranque antes de encender la VM</h2></div></div>
+  <div class="panel">
+    <div class="term-tag">pasos</div>
+    <ul class="checklist">
+      <li>Seleccionar la VM creada → <b>Configuración → Almacenamiento</b></li>
+      <li>Click en el ícono de disco vacío bajo "Controlador: IDE"</li>
+      <li>Elegir <b>"Elegir un archivo de disco..."</b> y seleccionar la ISO descargada en el Paso 2</li>
+      <li>Verificar en <b>Configuración → Sistema → Orden de arranque</b> que el óptico esté antes que el disco duro</li>
+      <li>Guardar los cambios</li>
+    </ul>
+  </div>
+  <div style="margin-top:18px; text-align:right;">
+    <button class="btn-done" id="btn-step-6" onclick="markStep(6)"><i class="fa-regular fa-circle"></i> Marcar paso como completado</button>
+  </div>
+</div>
+`, {isStep:true});
+
+/* ---------- SLIDE 8 · PASO 7: INSTALAR EL SO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="step-header"><div class="step-num">7</div><div><h1 class="title" style="margin:0;">Instalar el <span class="accent">sistema operativo</span></h1><h2 class="subtitle" style="margin:0;">Arrancar la VM y seguir el asistente de instalación</h2></div></div>
+  <div class="panel">
+    <div class="term-tag">secuencia esperada</div>
+    <div class="code-block" style="line-height:2;">
+<span class="c-dim">1.</span> Click en <span class="c-green">"Iniciar"</span> — la VM arranca desde la ISO montada<br>
+<span class="c-dim">2.</span> Elegir <span class="c-amber">idioma, zona horaria y distribución de teclado</span><br>
+<span class="c-dim">3.</span> Seleccionar <span class="c-green">"Instalar"</span> (no "Probar" / "Live")<br>
+<span class="c-dim">4.</span> Particionar el disco: usar <span class="c-amber">todo el disco virtual</span> (es un disco nuevo, sin datos)<br>
+<span class="c-dim">5.</span> Crear el <span class="c-green">usuario administrador</span> y una contraseña<br>
+<span class="c-dim">6.</span> Esperar a que copie archivos e instale — <span class="c-amber">puede tardar varios minutos</span><br>
+<span class="c-dim">7.</span> Al terminar, <span class="c-green">reiniciar</span> cuando lo indique el instalador
+    </div>
+  </div>
+  <div class="panel warn-box" style="margin-top:16px;">
+    <div class="term-tag">atención</div>
+    <p style="margin:0;">Si al reiniciar vuelve a bootear desde la ISO, andá a <b>Configuración → Almacenamiento</b> y quitá el ISO montado (o cambiá el orden de arranque).</p>
+  </div>
+  <div style="margin-top:18px; text-align:right;">
+    <button class="btn-done" id="btn-step-7" onclick="markStep(7)"><i class="fa-regular fa-circle"></i> Marcar paso como completado</button>
+  </div>
+</div>
+`, {isStep:true});
+
+/* ---------- SLIDE 9 · PASO 8: POST-INSTALACION ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="step-header"><div class="step-num">8</div><div><h1 class="title" style="margin:0;">Primeros pasos <span class="accent">post-instalación</span></h1><h2 class="subtitle" style="margin:0;">Dejar la VM lista para trabajar el resto del curso</h2></div></div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">Guest Additions</div>
+        <ul class="checklist">
+          <li>Menú <b>Dispositivos → Insertar imagen de CD de las Guest Additions</b></li>
+          <li>Ejecutar el instalador desde dentro de la VM</li>
+          <li>Reiniciar la VM al finalizar</li>
+          <li>Habilita pantalla completa, carpetas compartidas y portapapeles compartido</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">snapshot inicial</div>
+        <ul class="checklist">
+          <li>Con la VM apagada: click derecho → <b>Instantánea → Tomar</b></li>
+          <li>Nombrarla algo como <code>instalacion-limpia</code></li>
+          <li>Permite volver atrás si algo se rompe más adelante en el curso</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:18px; text-align:right;">
+    <button class="btn-done" id="btn-step-8" onclick="markStep(8)"><i class="fa-regular fa-circle"></i> Marcar paso como completado</button>
+  </div>
+</div>
+`, {isStep:true});
+
+/* ---------- SLIDE 10 · CHECKLIST DE VALIDACION ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">validación final</div>
+  <h1 class="title">¿Tu VM está <span class="accent">lista</span>?</h1>
+  <div class="panel">
+    <div class="term-tag">checklist de entrega</div>
+    <ul class="checklist">
+      <li>La VM arranca directamente al sistema operativo instalado (sin pedir la ISO)</li>
+      <li>Podés iniciar sesión con el usuario y contraseña que creaste</li>
+      <li>Las Guest Additions están instaladas (pantalla se ajusta al redimensionar la ventana)</li>
+      <li>Existe una instantánea llamada <code>instalacion-limpia</code></li>
+      <li>Tenés acceso a una terminal o consola de comandos dentro de la VM</li>
+    </ul>
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 11 · TROUBLESHOOTING ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">problemas frecuentes</div>
+  <h1 class="title">Si algo no <span class="accent">arrancó</span> bien</h1>
+  <div class="accordion" id="faqAccordion">
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">"La virtualización no está habilitada" / VT-x is not available</button></h2>
+      <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion"><div class="accordion-body">Reiniciar el equipo, entrar a la BIOS/UEFI (usualmente F2, F10, DEL o ESC al arrancar) y habilitar "Intel VT-x" o "AMD-V" / "SVM Mode". Guardar y salir.</div></div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">La VM arranca pero se queda en pantalla negra</button></h2>
+      <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Verificar que el ISO esté correctamente montado en Configuración → Almacenamiento, y que el tipo/versión del SO elegido en la creación de la VM coincida con el real.</div></div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">Vuelve a arrancar el instalador después de reiniciar</button></h2>
+      <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Ir a Configuración → Almacenamiento y quitar la ISO montada (click derecho → Quitar disco), o reordenar el arranque para que el disco duro tenga prioridad sobre el óptico.</div></div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">La VM va muy lenta</button></h2>
+      <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Revisar que la VM no esté usando más RAM de la disponible en el host, cerrar programas pesados en el anfitrión, y confirmar que las Guest Additions estén instaladas.</div></div>
+    </div>
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 12 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin del laboratorio</div>
+  <h1 class="mega" style="font-size:2.8rem;">¡Máquina virtual<br><span class="kernel">lista para usar!</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">esta VM la vas a usar en</div>
+    <ul class="checklist">
+      <li>Ejercicios de interfaces de usuario y scripting (CLI, PowerShell, BASH)</li>
+      <li>Laboratorios de procesos, memoria y sistema de archivos</li>
+      <li>El trabajo obligatorio de integración final</li>
+    </ul>
+  </div>
+  <div style="margin-top:22px;">
+    <button class="btn-quiz-final" onclick="checkAllDone()" style="font-family:var(--mono); background:transparent; border:1px solid var(--green-dim); color:var(--green); border-radius:6px; padding:10px 18px;">
+      <i class="fa-solid fa-clipboard-check"></i> Verificar mi progreso
+    </button>
+  </div>
+</div>
+`);
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+const completed = {};
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+  updateStepsBadge();
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+
+function updateStepsBadge(){
+  const doneCount = Object.values(completed).filter(Boolean).length;
+  document.getElementById('steps-badge').textContent = doneCount + ' / ' + totalSteps + ' PASOS COMPLETADOS';
+}
+
+function markStep(n){
+  completed[n] = true;
+  const btn = document.getElementById('btn-step-'+n);
+  if(btn){
+    btn.classList.add('done');
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Paso completado';
+    btn.disabled = true;
+  }
+  updateStepsBadge();
+}
+
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#ffb454',
+};
+
+function checkAllDone(){
+  const doneCount = Object.values(completed).filter(Boolean).length;
+  if(doneCount >= totalSteps){
+    Swal.fire({...swalBase, icon:'success', title:'¡Laboratorio completo!', text:'Tu máquina virtual está lista para el resto del curso.'});
+  } else {
+    Swal.fire({...swalBase, icon:'info', title:'Todavía faltan pasos', text:`Completaste ${doneCount} de ${totalSteps} pasos. Volvé y marcá los que falten.`});
+  }
+}
+
+render();
+</script>
+</body>
+</html>

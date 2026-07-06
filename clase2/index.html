@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 2 — Seguridad &amp; Control de Acceso</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --cyan:#5ccfe6;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(255,92,122,0.05), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(92,207,230,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--red); color:#170406; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(
+    to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px,
+    transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--red); box-shadow:0 0 6px var(--red); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, #a3122f, var(--red)); box-shadow:0 0 8px var(--red); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--red); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.6rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.15rem; font-weight:400; color:var(--text-dim); margin-bottom:1.8rem; }
+.accent{ color:var(--red); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border);
+  border-radius:10px; padding:22px 26px;
+  position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,92,122,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#8a3040; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.boot-lines .warn{ color:var(--amber); }
+.mega{ font-size:4.2rem; font-weight:700; line-height:1.02; margin:0; }
+.mega .kernel{ color:var(--red); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+ul.checklist.threat li::before{ content:'\f071'; color:var(--red); }
+ul.checklist.defense li::before{ content:'\f3ed'; color:var(--cyan); }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
+.card-min{
+  background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:18px;
+  transition:transform .2s, border-color .2s;
+}
+.card-min:hover{ transform:translateY(-3px); border-color:var(--red); }
+.card-min i{ color:var(--cyan); font-size:1.3rem; margin-bottom:8px; display:block; }
+.card-min h4{ font-size:1rem; margin-bottom:4px; }
+.card-min p{ font-size:.85rem; color:var(--text-dim); margin:0; }
+.card-min.threat i{ color:var(--red); }
+.card-min.threat:hover{ border-color:var(--red); }
+.card-min.defense i{ color:var(--green); }
+.card-min.defense:hover{ border-color:var(--green); }
+
+.aaa-flow{ display:flex; gap:14px; flex-wrap:wrap; align-items:stretch; }
+.aaa-step{
+  flex:1; min-width:200px; background:var(--bg-1); border:1px solid var(--panel-border);
+  border-radius:8px; padding:20px; text-align:center; position:relative;
+}
+.aaa-step .num{ font-family:var(--mono); font-size:.75rem; color:var(--text-dim); }
+.aaa-step i{ font-size:1.8rem; margin:10px 0; display:block; }
+.aaa-arrow{ display:flex; align-items:center; color:var(--text-dim); font-size:1.4rem; }
+
+table.rubric{ width:100%; border-collapse:collapse; font-size:.92rem; }
+table.rubric th{ font-family:var(--mono); text-transform:uppercase; font-size:.75rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.rubric td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.85rem; color:var(--cyan); overflow-x:auto;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-red{ color:var(--red); }
+
+.btn-quiz{
+  background:transparent; border:1px solid #a3122f; color:var(--red);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem;
+  transition:.2s;
+}
+.btn-quiz:hover{ background:var(--red); color:#170406; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--red); border-color:#a3122f; }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--red); box-shadow:0 0 6px var(--red); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.15rem !important; color:var(--red) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:2.3rem; }
+  h1.title{ font-size:1.7rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .mod-num{ display:none; }
+  .aaa-flow{ flex-direction:column; }
+  .aaa-arrow{ transform:rotate(90deg); align-self:center; }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-regular fa-clock"></i> <span id="clockLabel">18:15 – 19:35</span></div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria', clock: opts.clock || ''});
+}
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Retomando sesión ...................... clase_02.iso</div>
+    <div>[ <span class="warn">!!</span> ] Escaneando vulnerabilidades ......... en curso</div>
+    <div>[ <span class="ok">OK</span> ] Cargando módulo de control de acceso</div>
+    <div>[ <span class="ok">OK</span> ] Verificando credenciales ............. root@campus-salto</div>
+  </div>
+  <div class="eyebrow">boot sequence · clase 02</div>
+  <h1 class="mega">Seguridad <span class="kernel">&amp;</span><br>Control de Acceso</h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Identidad, autenticación y las primeras líneas de defensa &nbsp;·&nbsp; Unidad 2</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 1 · REPASO + AGENDA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">repaso relámpago</div>
+  <h1 class="title">Lo que quedó de la <span class="accent">clase 1</span></h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>Un SO es <b>máquina extendida</b> (Tanenbaum) y <b>administrador de recursos</b> (Silberschatz).</li>
+      <li>La virtualización nos permite instalar SO invitados sobre un hipervisor (VirtualBox).</li>
+      <li>El arranque va de POST → bootloader → kernel → servicios → sesión de usuario.</li>
+    </ul>
+  </div>
+  <h2 class="subtitle" style="margin-top:1.6rem;">Hoy: Unidad 2 — Seguridad</h2>
+  <div class="grid-cards">
+    <div class="card-min">
+      <i class="fa-solid fa-user-shield"></i>
+      <h4 class="accent-cyan">Módulo 1 · 18:15–19:35</h4>
+      <p>Contexto de seguridad, control de acceso (identificación, autenticación, autorización) y cuentas de usuario. <b>Teoría.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-bug-slash"></i>
+      <h4 class="accent-amber">Módulo 2 · 19:45–21:00</h4>
+      <p>Ciberseguridad: ataques y defensas + laboratorio con visor de sucesos (Windows) y registros (Linux). <b>Práctica.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-users-gear"></i>
+      <h4 class="accent-amber">Módulo 3 · 21:05–22:30</h4>
+      <p>Administración de usuarios en entorno gráfico: permisos y grupos. <b>Laboratorio + quiz de cierre.</b></p>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 2 · CONTEXTO ACTUAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">unidad 2 · contexto actual</div>
+  <h1 class="title">¿Por qué la seguridad es <span class="accent">tarea del SO</span>?</h1>
+  <div class="panel">
+    <p style="font-size:1.05rem; line-height:1.7;">
+      El sistema operativo es el punto donde conviven <b>múltiples usuarios</b>, <b>procesos ajenos entre sí</b>
+      y <b>recursos compartidos</b>. Si el SO no controla quién puede hacer qué, cualquier proceso podría leer,
+      modificar o destruir datos de otro. La seguridad empieza en el <span class="accent">control de acceso</span>.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:18px;">
+    <div class="card-min"><i class="fa-solid fa-globe"></i><h4>Superficie de ataque</h4><p>Cada servicio expuesto es una puerta potencial</p></div>
+    <div class="card-min"><i class="fa-solid fa-users"></i><h4>Multiusuario</h4><p>Aislar cuentas y procesos entre sí</p></div>
+    <div class="card-min"><i class="fa-solid fa-cloud-arrow-up"></i><h4>Todo conectado</h4><p>Nube, IoT y móviles amplían el riesgo</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 3 · CONTROL DE ACCESO (AAA) ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">control de acceso</div>
+  <h1 class="title">Identificación → Autenticación → <span class="accent">Autorización</span></h1>
+  <div class="aaa-flow">
+    <div class="aaa-step">
+      <div class="num">01</div>
+      <i class="fa-solid fa-id-card accent-cyan"></i>
+      <h4>Identificación</h4>
+      <p style="color:var(--text-dim); font-size:.9rem;">¿Quién decís que sos? (usuario, email)</p>
+    </div>
+    <div class="aaa-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+    <div class="aaa-step">
+      <div class="num">02</div>
+      <i class="fa-solid fa-key accent-amber"></i>
+      <h4>Autenticación</h4>
+      <p style="color:var(--text-dim); font-size:.9rem;">Probá que sos quien decís (contraseña, biometría, 2FA)</p>
+    </div>
+    <div class="aaa-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+    <div class="aaa-step">
+      <div class="num">03</div>
+      <i class="fa-solid fa-lock-open accent"></i>
+      <h4>Autorización</h4>
+      <p style="color:var(--text-dim); font-size:.9rem;">¿Qué permisos tenés una vez adentro?</p>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 4 · CUENTAS DE USUARIO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">cuentas de usuario</div>
+  <h1 class="title">Cada cuenta, un <span class="accent">territorio</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">tipos habituales</div>
+        <ul class="checklist">
+          <li>Administrador / root — control total del sistema</li>
+          <li>Usuario estándar — permisos limitados</li>
+          <li>Invitado — acceso temporal y restringido</li>
+          <li>Cuentas de servicio — usadas por procesos, no por personas</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">buenas prácticas</div>
+        <ul class="checklist">
+          <li>No trabajar el día a día como administrador</li>
+          <li>Una cuenta por persona, nunca compartida</li>
+          <li>Deshabilitar cuentas que no se usan</li>
+          <li>Contraseñas fuertes + segundo factor cuando sea posible</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 5 · QUIZ MODULO 1 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-shield-halved accent"></i> Antes del laboratorio...</h1>
+  <p class="subtitle">Repasemos identificación, autenticación y autorización</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 6 · TRANSICIÓN MÓDULO 2 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:3rem;">Introducción a la<br><span class="kernel" style="color:var(--amber);">Ciberseguridad</span></h1>
+  <h2 class="subtitle">Ataques, defensas y los registros que dejan huella</h2>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 7 · ATAQUES Y DEFENSAS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">ataques &amp; defensas</div>
+  <h1 class="title">Dos caras de la <span class="accent-amber">misma moneda</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag" style="border-color:var(--red); color:var(--red);">ataques comunes</div>
+        <ul class="checklist threat">
+          <li>Phishing — engañar para robar credenciales</li>
+          <li>Fuerza bruta — probar contraseñas masivamente</li>
+          <li>Malware — software malicioso (virus, ransomware)</li>
+          <li>Escalado de privilegios — de usuario limitado a admin</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag" style="border-color:var(--green); color:var(--green);">defensas</div>
+        <ul class="checklist defense">
+          <li>Actualizaciones y parches al día</li>
+          <li>Principio de mínimo privilegio</li>
+          <li>Autenticación multifactor (2FA/MFA)</li>
+          <li>Monitoreo de logs y auditoría</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 8 · VISOR DE SUCESOS WINDOWS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · windows</div>
+  <h1 class="title">Visor de <span class="accent-amber">sucesos</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">cómo abrirlo</div>
+        <ul class="checklist">
+          <li>Windows + R → escribir <code>eventvwr.msc</code></li>
+          <li>Explorar: Registros de Windows → Seguridad</li>
+          <li>Buscar eventos de inicio de sesión fallidos</li>
+          <li>Identificar el ID de evento y su descripción</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="code-block">
+<span class="c-dim"># IDs de evento útiles</span><br>
+<span class="c-green">4624</span> — inicio de sesión exitoso<br>
+<span class="c-red">4625</span> — inicio de sesión fallido<br>
+<span class="c-amber">4720</span> — cuenta de usuario creada<br>
+<span class="c-amber">4732</span> — miembro agregado a grupo
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 9 · REGISTROS LINUX ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · linux</div>
+  <h1 class="title">Lanzador y <span class="accent-amber">registros</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">dónde mirar</div>
+        <ul class="checklist">
+          <li>Lanzador de aplicaciones → herramienta de "Registros" (Logs)</li>
+          <li>Archivos clave: <code>/var/log/auth.log</code> (Debian/Ubuntu)</li>
+          <li>Comando <code>journalctl</code> en sistemas con systemd</li>
+          <li>Buscar intentos de acceso o cambios de usuario</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="code-block">
+<span class="c-dim"># comandos básicos</span><br>
+<span class="c-green">$</span> journalctl -u ssh<br>
+<span class="c-green">$</span> tail -f /var/log/auth.log<br>
+<span class="c-green">$</span> grep "Failed password" /var/log/auth.log
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">actividad</div>
+    <p style="margin:0;">En equipos: buscar en su propia máquina (Windows o Linux) un evento de inicio de sesión y describirlo en voz alta.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 10 · QUIZ MODULO 2 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-magnifying-glass accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Ataques, defensas y dónde encontrar los registros</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 11 · TRANSICIÓN MÓDULO 3 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · práctica</div>
+  <h1 class="mega" style="font-size:3rem;">Administración de<br><span class="kernel">usuarios y permisos</span></h1>
+  <h2 class="subtitle">Entorno gráfico, grupos y niveles de acceso</h2>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 12 · ADMIN USUARIOS ENTORNO GRAFICO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">administración gráfica</div>
+  <h1 class="title">Crear y gestionar <span class="accent-amber">usuarios</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">Windows</div>
+        <ul class="checklist">
+          <li>Configuración → Cuentas → Otros usuarios</li>
+          <li>Panel de control → Cuentas de usuario</li>
+          <li>Asignar tipo: Administrador o Estándar</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">Linux (Ubuntu)</div>
+        <ul class="checklist">
+          <li>Configuración → Usuarios</li>
+          <li>Crear cuenta y elegir "Administrador" o "Estándar"</li>
+          <li>Gestión de grupos desde herramientas de administración</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 13 · PERMISOS Y GRUPOS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">permisos y grupos</div>
+  <h1 class="title">Los grupos <span class="accent-amber">simplifican</span> el control</h1>
+  <div class="panel">
+    <p>En vez de asignar permisos usuario por usuario, se agrupan cuentas con necesidades similares y se les asignan permisos al grupo completo.</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-user-gear"></i><h4>Administradores</h4><p>Control total del equipo</p></div>
+    <div class="card-min"><i class="fa-solid fa-users-line"></i><h4>Usuarios estándar</h4><p>Uso cotidiano, sin cambios del sistema</p></div>
+    <div class="card-min"><i class="fa-solid fa-user-lock"></i><h4>Invitados</h4><p>Acceso mínimo y temporal</p></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">laboratorio</div>
+    <p style="margin:0;">Crear un usuario nuevo en su equipo, agregarlo a un grupo, y verificar qué puede y qué no puede hacer.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 14 · QUIZ FINAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase 02</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre de la clase</h1>
+  <p class="subtitle">Últimas preguntas antes de irnos</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 15 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:3rem;">Nos vemos en la<br><span class="kernel">próxima clase</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">para la próxima</div>
+    <ul class="checklist">
+      <li>Traer VirtualBox con la VM funcionando</li>
+      <li>Repasar identificación / autenticación / autorización</li>
+      <li>Avanzamos con Unidad 3: Interfaces de usuario y scripting</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada — apagando terminal...</div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  document.getElementById('clockLabel').textContent = s.clock;
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+/* ============================================================
+   QUIZZES (SweetAlert2)
+   ============================================================ */
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#ff5c7a',
+  cancelButtonColor: '#6d7c8c',
+};
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Control de acceso',
+    '¿En qué etapa del control de acceso probás una contraseña o huella digital?',
+    ['Identificación','Autenticación','Autorización','Auditoría'], 1,
+    'La <b>autenticación</b> es donde demostrás que sos quien decís ser (contraseña, biometría, 2FA).'
+  );
+  await askMC(
+    'Cuentas de usuario',
+    '¿Cuál es la mejor práctica respecto a usar la cuenta de administrador?',
+    ['Usarla siempre para mayor comodidad','Compartirla entre varios usuarios','Usarla solo cuando sea necesario','Deshabilitar la autenticación en ella'], 2,
+    'Se recomienda usar la cuenta de administrador solo cuando sea necesario, y trabajar el día a día con una cuenta estándar.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Pasamos a ciberseguridad y registros.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'Ataques y defensas',
+    '¿Cómo se llama el ataque que intenta adivinar una contraseña probando muchas combinaciones?',
+    ['Phishing','Fuerza bruta','Escalado de privilegios','Ransomware'], 1,
+    'Se llama <b>fuerza bruta</b>: prueba sistemáticamente combinaciones hasta encontrar la correcta.'
+  );
+  await askMC(
+    'Registros del sistema',
+    '¿Qué ID de evento de Windows indica un inicio de sesión fallido?',
+    ['4624','4625','4720','4732'], 1,
+    'El evento <b>4625</b> corresponde a un inicio de sesión fallido en Windows.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, administración de usuarios y grupos.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'Permisos y grupos',
+    '¿Por qué conviene asignar permisos a grupos en vez de a usuarios individuales?',
+    ['Porque los grupos no dejan registros','Porque simplifica administrar permisos similares','Porque los grupos no requieren contraseña','Porque es obligatorio por ley'], 1,
+    'Agrupar cuentas con necesidades similares simplifica enormemente la gestión de permisos.'
+  );
+  await askMC(
+    'AAA',
+    'Una vez autenticado, ¿qué determina qué acciones podés realizar?',
+    ['La identificación','La autenticación','La autorización','El firmware'], 2,
+    'La <b>autorización</b> define qué permisos y acciones tenés disponibles una vez dentro del sistema.'
+  );
+  await askMC(
+    'Ciberseguridad',
+    '¿Cuál de estas es una defensa, no un ataque?',
+    ['Phishing','Autenticación multifactor (MFA)','Fuerza bruta','Escalado de privilegios'], 1,
+    'La <b>autenticación multifactor</b> es una defensa clave frente a robo de credenciales.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase 2 completa!', text:'Nos vemos en la próxima sesión — Unidad 3: Scripting.'});
+}
+</script>
+</body>
+</html>

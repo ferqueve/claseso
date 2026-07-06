@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 1 — Virtualización &amp; Fundamentos</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --cyan:#5ccfe6;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(57,255,136,0.05), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(92,207,230,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--green); color:#04120a; }
+
+/* ---------- scanline / crt texture ---------- */
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(
+    to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px,
+    transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+/* ---------- top status bar (boot strip) ---------- */
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{
+  font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor;
+}
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+/* ---------- progress bar ---------- */
+.progress-rail{
+  position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200;
+}
+.progress-fill{
+  height:100%; background:linear-gradient(90deg, var(--green-dim), var(--green));
+  box-shadow:0 0 8px var(--green); transition:width .5s ease;
+}
+
+/* ---------- deck ---------- */
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{
+  position:absolute; inset:0; top:45px;
+  display:none;
+  padding:38px 64px 74px 64px;
+  overflow-y:auto;
+}
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--green); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.6rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.15rem; font-weight:400; color:var(--text-dim); margin-bottom:1.8rem; }
+.accent{ color:var(--green); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border);
+  border-radius:10px; padding:22px 26px;
+  position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(57,255,136,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+/* cover */
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:var(--green-dim); margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:4.2rem; font-weight:700; line-height:1.02; margin:0; }
+.mega .kernel{ color:var(--green); }
+
+/* module transition slides */
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+/* generic list */
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
+.card-min{
+  background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:18px;
+  transition:transform .2s, border-color .2s;
+}
+.card-min:hover{ transform:translateY(-3px); border-color:var(--green-dim); }
+.card-min i{ color:var(--cyan); font-size:1.3rem; margin-bottom:8px; display:block; }
+.card-min h4{ font-size:1rem; margin-bottom:4px; }
+.card-min p{ font-size:.85rem; color:var(--text-dim); margin:0; }
+
+table.rubric{ width:100%; border-collapse:collapse; font-size:.92rem; }
+table.rubric th{ font-family:var(--mono); text-transform:uppercase; font-size:.75rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.rubric td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+.badge-scale{ font-family:var(--mono); font-weight:700; padding:2px 8px; border-radius:3px; font-size:.78rem; }
+
+.timeline{ display:flex; flex-direction:column; gap:2px; }
+.tl-row{ display:grid; grid-template-columns:110px 1fr; align-items:center; gap:14px; }
+.tl-label{ font-family:var(--mono); font-size:.8rem; color:var(--text-dim); text-align:right; }
+.tl-bar-track{ background:var(--bg-2); border-radius:4px; height:22px; position:relative; overflow:hidden; border:1px solid var(--panel-border); }
+.tl-bar{ position:absolute; top:0; bottom:0; border-radius:4px; opacity:.85; display:flex; align-items:center; padding-left:8px; font-size:.7rem; font-family:var(--mono); white-space:nowrap; }
+.tl-today{ box-shadow:0 0 0 2px var(--green) inset; }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.85rem; color:var(--cyan); overflow-x:auto;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+
+.btn-quiz{
+  background:transparent; border:1px solid var(--green-dim); color:var(--green);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem;
+  transition:.2s;
+}
+.btn-quiz:hover{ background:var(--green); color:#04120a; }
+
+/* nav arrows */
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--green); border-color:var(--green-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+/* slide counter bottom */
+.slide-counter{
+  position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim);
+}
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--green); box-shadow:0 0 6px var(--green); }
+
+/* quiz custom swal */
+.swal2-popup.so-popup{
+  background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border);
+  font-family:var(--display);
+}
+.so-title{ font-family:var(--mono) !important; font-size:1.15rem !important; color:var(--green) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:2.3rem; }
+  h1.title{ font-size:1.7rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .mod-num{ display:none; }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-regular fa-clock"></i> <span id="clockLabel">18:15 – 19:35</span></div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+/* ============================================================
+   CONTENIDO DE SLIDES
+   ============================================================ */
+const slides = [];
+
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria', clock: opts.clock || ''});
+}
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Cargando módulo académico ............ UCU · FIT · Campus Salto</div>
+    <div>[ <span class="ok">OK</span> ] Verificando plan de estudios ......... Desarrollador de Software</div>
+    <div>[ <span class="ok">OK</span> ] Montando unidad ...................... /sistemas-operativos</div>
+    <div>[ <span class="ok">OK</span> ] Iniciando sesión ...................... clase_01.iso</div>
+  </div>
+  <div class="eyebrow">boot sequence · clase 01</div>
+  <h1 class="mega">Sistemas<br><span class="kernel">Operativos</span></h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Bienvenida, virtualización y fundamentos del kernel &nbsp;·&nbsp; Docente: Fernando Quevedo</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 1 · AGENDA DEL DÍA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">agenda · clase 01</div>
+  <h1 class="title">Así se arma <span class="accent">hoy</span></h1>
+  <h2 class="subtitle">Tres módulos, alternando teoría y práctica</h2>
+  <div class="grid-cards">
+    <div class="card-min">
+      <i class="fa-solid fa-comments"></i>
+      <h4 class="accent-cyan">Módulo 1 · 18:15–19:35</h4>
+      <p>Bienvenida, objetivos, competencias, cronograma y evaluación. <b>Teoría + dinámica de curso.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-terminal"></i>
+      <h4 class="accent-amber">Módulo 2 · 19:45–21:00</h4>
+      <p>Unidad 1: Virtualización + instalación de VirtualBox. <b>Laboratorio práctico.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-microchip"></i>
+      <h4 class="accent-cyan">Módulo 3 · 21:05–22:30</h4>
+      <p>Fundamentos de Sistemas Operativos: definiciones, tipos, arranque. <b>Teoría + quiz de cierre.</b></p>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:22px;">
+    <div class="term-tag">nota</div>
+    <p style="margin:0; color:var(--text-dim);"><i class="fa-solid fa-laptop"></i> Traé tu notebook cargada — desde el Módulo 2 empezamos a instalar software.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 2 · SOBRE EL CURSO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">1 · acerca del curso</div>
+  <h1 class="title">¿Qué es un <span class="accent">sistema operativo</span>?</h1>
+  <div class="panel">
+    <div class="term-tag">definición de trabajo</div>
+    <p style="font-size:1.05rem; line-height:1.7;">
+      El software base que administra el hardware y coordina la ejecución de otros programas:
+      en una PC, un teléfono, una máquina virtual, un servidor o un dispositivo especializado.
+      Gracias a esta capa, usuarios y programas interactúan con los recursos de forma más
+      <span class="accent">natural</span>, <span class="accent-cyan">segura</span> y <span class="accent-amber">organizada</span>.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:18px;">
+    <div class="card-min"><i class="fa-solid fa-memory"></i><h4>Memoria</h4><p>Administración de recursos limitados</p></div>
+    <div class="card-min"><i class="fa-solid fa-diagram-project"></i><h4>Procesos</h4><p>Ejecución concurrente de programas</p></div>
+    <div class="card-min"><i class="fa-solid fa-folder-tree"></i><h4>Archivos</h4><p>Control de almacenamiento y organización</p></div>
+    <div class="card-min"><i class="fa-solid fa-shield-halved"></i><h4>Seguridad</h4><p>Control de acceso e identidad</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 3 · COMPETENCIAS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">1.2 · competencias del curso</div>
+  <h1 class="title">Lo que vas a poder <span class="accent">hacer</span></h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>Programar usando funciones del SO para memoria, procesos/hilos, disco, archivos e I/O.</li>
+      <li>Resolver problemas clásicos de sincronización y concurrencia.</li>
+      <li>Instalar y configurar un SO en entorno físico, virtual o cloud.</li>
+      <li>Argumentar propuestas técnicas por escrito y oralmente.</li>
+      <li>Automatizar tareas por consola de comandos (scripts ejecutables).</li>
+      <li>Analizar mecanismos de control de acceso para seguridad y privacidad.</li>
+    </ul>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 4 · UNIDADES / CRONOGRAMA GENERAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">1.4 · unidades temáticas</div>
+  <h1 class="title">El <span class="accent">mapa</span> del curso</h1>
+  <div class="panel">
+    <div class="timeline">
+      <div class="tl-row"><div class="tl-label">U1</div><div class="tl-bar-track"><div class="tl-bar tl-today" style="left:0%; width:18%; background:var(--green); color:#04120a;">Virtualización</div></div></div>
+      <div class="tl-row"><div class="tl-label">U2</div><div class="tl-bar-track"><div class="tl-bar" style="left:2%; width:16%; background:var(--cyan); color:#04120a;">Seguridad</div></div></div>
+      <div class="tl-row"><div class="tl-label">U3</div><div class="tl-bar-track"><div class="tl-bar" style="left:8%; width:36%; background:var(--amber); color:#04120a;">Scripting / CLI</div></div></div>
+      <div class="tl-row"><div class="tl-label">U4</div><div class="tl-bar-track"><div class="tl-bar" style="left:44%; width:30%; background:#c792ea; color:#04120a;">Procesos</div></div></div>
+      <div class="tl-row"><div class="tl-label">U5</div><div class="tl-bar-track"><div class="tl-bar" style="left:66%; width:24%; background:var(--green); color:#04120a;">Almacenamiento</div></div></div>
+      <div class="tl-row"><div class="tl-label">U6</div><div class="tl-bar-track"><div class="tl-bar" style="left:80%; width:20%; background:var(--red); color:#04120a;">Comunicación / I-O</div></div></div>
+      <div class="tl-row"><div class="tl-label">U7</div><div class="tl-bar-track"><div class="tl-bar" style="left:82%; width:18%; background:var(--text-dim); color:#04120a;">Integración final</div></div></div>
+    </div>
+  </div>
+  <p style="color:var(--text-dim); font-family:var(--mono); font-size:.8rem; margin-top:10px;">
+    <i class="fa-solid fa-circle" style="color:var(--green);"></i> estamos acá — Unidad 1
+  </p>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 5 · EVALUACIÓN ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">3 · aprobación del curso</div>
+  <h1 class="title">Cómo se <span class="accent">evalúa</span></h1>
+  <div class="row g-3">
+    <div class="col-md-7">
+      <div class="panel h-100">
+        <div class="term-tag">condiciones simultáneas</div>
+        <ul class="checklist">
+          <li>Calificación <b>B o superior</b> en resultado de aprendizaje.</li>
+          <li>Calificación <b>B o superior</b> en proceso de aprendizaje.</li>
+          <li>Asistencia <b>no menor al 75%</b> de las clases dictadas.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="panel h-100">
+        <div class="term-tag">escala oficial UCU</div>
+        <table class="rubric">
+          <tr><th>%</th><th>Nota</th></tr>
+          <tr><td>0–40</td><td><span class="badge-scale" style="color:var(--red); border:1px solid var(--red);">D</span></td></tr>
+          <tr><td>41–74</td><td><span class="badge-scale" style="color:var(--amber); border:1px solid var(--amber);">R</span></td></tr>
+          <tr><td>75–82</td><td><span class="badge-scale" style="color:var(--cyan); border:1px solid var(--cyan);">B</span></td></tr>
+          <tr><td>83–90</td><td><span class="badge-scale" style="color:var(--cyan); border:1px solid var(--cyan);">BMB</span></td></tr>
+          <tr><td>91–95</td><td><span class="badge-scale" style="color:var(--green); border:1px solid var(--green);">MB</span></td></tr>
+          <tr><td>96–100</td><td><span class="badge-scale" style="color:var(--green); border:1px solid var(--green);">S</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">honestidad académica &amp; IA</div>
+    <p style="color:var(--text-dim); margin:0;">Podés usar IA generativa para <b class="accent-cyan">parafrasear</b> o <b class="accent-cyan">validar ideas</b>. No para <b class="accent">generar la solución</b> de un ejercicio o entrega — eso es una falta grave.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 6 · QUIZ MÓDULO 1 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-terminal accent"></i> Antes de pasar al laboratorio...</h1>
+  <p class="subtitle">Un par de preguntas rápidas para fijar lo visto</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 7 · TRANSICIÓN MÓDULO 2 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:3rem;">Unidad 1<br><span class="kernel" style="color:var(--amber);">Virtualización</span></h1>
+  <h2 class="subtitle">Vamos a instalar VirtualBox y preparar tu máquina virtual</h2>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 8 · CONCEPTOS DE VIRTUALIZACIÓN ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">unidad 1 · virtualización</div>
+  <h1 class="title">Una <span class="accent-amber">máquina dentro</span> de otra</h1>
+  <div class="panel">
+    <p style="font-size:1.02rem; line-height:1.7;">
+      La virtualización permite ejecutar un sistema operativo <b>huésped</b> sobre un sistema
+      <b>anfitrión</b>, compartiendo el hardware físico mediante una capa llamada
+      <span class="accent-amber">hipervisor</span>.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-layer-group"></i><h4>Tipo 1 (bare-metal)</h4><p>Corre directo sobre el hardware. Ej: ESXi, Hyper-V server.</p></div>
+    <div class="card-min"><i class="fa-solid fa-desktop"></i><h4>Tipo 2 (hosted)</h4><p>Corre sobre un SO anfitrión. Ej: VirtualBox, VMware Workstation.</p></div>
+    <div class="card-min"><i class="fa-solid fa-cloud"></i><h4>Uso en la nube</h4><p>Servidores, contenedores y entornos de desarrollo aislados.</p></div>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 9 · INSTALACIÓN VIRTUALBOX ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · paso a paso</div>
+  <h1 class="title">Instalar <span class="accent-amber">VirtualBox</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">pasos</div>
+        <ul class="checklist" id="vbox-steps">
+          <li>Descargar VirtualBox desde virtualbox.org</li>
+          <li>Instalar con permisos de administrador</li>
+          <li>Descargar el ISO del SO a virtualizar</li>
+          <li>Crear una nueva máquina virtual</li>
+          <li>Asignar RAM, disco y CPU</li>
+          <li>Montar el ISO y arrancar la instalación</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="code-block">
+<span class="c-dim"># requisitos mínimos recomendados</span><br>
+<span class="c-green">RAM</span> asignada a la VM: <span class="c-amber">≥ 2 GB</span><br>
+<span class="c-green">Disco</span> virtual: <span class="c-amber">≥ 20 GB</span><br>
+<span class="c-green">Virtualización</span> habilitada en BIOS/UEFI<br>
+<span class="c-dim"># Intel VT-x / AMD-V</span>
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 10 · LABORATORIO PRACTICO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow"><i class="fa-solid fa-flask"></i> hands-on</div>
+  <h1 class="title">Manos a la <span class="accent-amber">obra</span></h1>
+  <div class="panel">
+    <div class="term-tag">objetivo del laboratorio</div>
+    <p>Al finalizar este módulo cada estudiante debe tener:</p>
+    <ul class="checklist">
+      <li>VirtualBox instalado y funcionando</li>
+      <li>Una VM creada con el SO elegido por el equipo docente</li>
+      <li>La VM arrancando correctamente desde el ISO</li>
+    </ul>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">tip</div>
+    <p style="margin:0;">Si algo falla, primero intentá resolverlo con tu equipo antes de llamar al docente — así "te apropiás" de la herramienta.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 11 · QUIZ MODULO 2 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-box accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Confirmá que entendiste los conceptos de virtualización</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 12 · TRANSICIÓN MÓDULO 3 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · teoría</div>
+  <h1 class="mega" style="font-size:3rem;">Fundamentos de<br><span class="kernel">Sistemas Operativos</span></h1>
+  <h2 class="subtitle">Hardware, software, arranque y definiciones clásicas</h2>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 13 · HARDWARE / SOFTWARE ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">conceptos básicos</div>
+  <h1 class="title">Hardware <span class="accent">↔</span> Software</h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">hardware</div>
+        <ul class="checklist">
+          <li>CPU — procesamiento</li>
+          <li>Memoria principal (RAM)</li>
+          <li>Dispositivos de almacenamiento</li>
+          <li>Periféricos de entrada/salida</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">software</div>
+        <ul class="checklist">
+          <li>Sistema operativo (kernel + servicios)</li>
+          <li>Software de aplicación</li>
+          <li>Drivers / controladores</li>
+          <li>Firmware (BIOS/UEFI)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p style="color:var(--text-dim); margin-top:14px; font-family:var(--mono); font-size:.85rem;">
+    El SO es la capa que traduce las intenciones del software en instrucciones que el hardware entiende.
+  </p>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 14 · PROCESO DE ARRANQUE ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">proceso de arranque</div>
+  <h1 class="title">¿Qué pasa cuando <span class="accent">encendés</span> la PC?</h1>
+  <div class="code-block" style="font-size:.95rem; line-height:2;">
+<span class="c-dim">1.</span> <span class="c-green">POST</span> — Power-On Self Test (firmware revisa el hardware)<br>
+<span class="c-dim">2.</span> <span class="c-amber">BIOS/UEFI</span> — localiza el dispositivo de arranque<br>
+<span class="c-dim">3.</span> <span class="c-green">Bootloader</span> — carga el kernel del sistema operativo<br>
+<span class="c-dim">4.</span> <span class="c-amber">Kernel</span> — inicializa memoria, procesos y drivers<br>
+<span class="c-dim">5.</span> <span class="c-green">Servicios / init</span> — arrancan procesos de fondo<br>
+<span class="c-dim">6.</span> <span class="c-amber">Sesión de usuario</span> — login y entorno gráfico o consola
+  </div>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 15 · TANENBAUM VS SILBERSCHATZ ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">definiciones clásicas</div>
+  <h1 class="title">Dos miradas sobre el <span class="accent">mismo problema</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">Tanenbaum</div>
+        <p>El SO como <b>máquina extendida</b>: oculta la complejidad del hardware y ofrece una interfaz más simple y agradable.</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">Silberschatz</div>
+        <p>El SO como <b>administrador de recursos</b>: decide cómo asignar CPU, memoria y dispositivos entre procesos en conflicto.</p>
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 16 · TIPOS DE SO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">tipos de sistemas operativos</div>
+  <h1 class="title">No todos los SO son <span class="accent">iguales</span></h1>
+  <div class="grid-cards">
+    <div class="card-min"><i class="fa-solid fa-server"></i><h4>Mainframe</h4><p>Alto volumen transaccional</p></div>
+    <div class="card-min"><i class="fa-solid fa-network-wired"></i><h4>Servidores</h4><p>Múltiples clientes simultáneos</p></div>
+    <div class="card-min"><i class="fa-solid fa-microchip"></i><h4>Multiprocesadores</h4><p>Varias CPU, un solo SO</p></div>
+    <div class="card-min"><i class="fa-solid fa-desktop"></i><h4>PC</h4><p>Uso personal, un usuario</p></div>
+    <div class="card-min"><i class="fa-solid fa-wifi"></i><h4>Nodos sensores (IoT)</h4><p>Recursos muy limitados</p></div>
+    <div class="card-min"><i class="fa-solid fa-stopwatch"></i><h4>Tiempo real</h4><p>Plazos estrictos de respuesta</p></div>
+  </div>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 17 · EVOLUCION Y SERVICIOS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">evolución y servicios</div>
+  <h1 class="title">De las tarjetas perforadas al <span class="accent">cloud</span></h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>1ª generación: tubos de vacío, programación en lenguaje de máquina.</li>
+      <li>2ª generación: transistores, procesamiento por lotes (batch).</li>
+      <li>3ª generación: circuitos integrados, multiprogramación y tiempo compartido.</li>
+      <li>4ª generación: PC, interfaces gráficas, redes y sistemas distribuidos.</li>
+      <li>Hoy: virtualización, contenedores, cloud computing, móviles e IoT.</li>
+    </ul>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">servicios típicos de un SO</div>
+    <p style="margin:0; color:var(--text-dim);">Gestión de procesos, memoria, archivos, dispositivos, seguridad, comunicación entre procesos e interfaz de usuario.</p>
+  </div>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 18 · UNIDAD BOOTEABLE ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">cierre de unidad 1</div>
+  <h1 class="title">Crear una <span class="accent">unidad booteable</span></h1>
+  <div class="panel">
+    <p>Un pendrive o disco de arranque permite instalar o reparar un sistema operativo sin depender del disco interno. Lo vamos a necesitar para instalar un SO real (no solo virtualizado) más adelante en el curso.</p>
+    <ul class="checklist">
+      <li>Herramientas: Rufus, balenaEtcher, Media Creation Tool</li>
+      <li>Requiere: pendrive (≥ 8GB) + imagen ISO del SO</li>
+      <li>El proceso formatea el pendrive por completo</li>
+    </ul>
+  </div>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 19 · QUIZ FINAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase 01</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre de la clase</h1>
+  <p class="subtitle">Últimas preguntas antes de irnos</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 20 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:3rem;">Nos vemos en la<br><span class="kernel">próxima clase</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">para la próxima</div>
+    <ul class="checklist">
+      <li>Traer VirtualBox instalado y probado</li>
+      <li>Repasar conceptos de virtualización y arranque</li>
+      <li>Avanzamos con Unidad 2: Seguridad y control de acceso</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada — apagando terminal...</div>
+</div>
+`, {module:3, mtype:'teoria', clock:'21:05 – 22:30'});
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  document.getElementById('clockLabel').textContent = s.clock;
+
+  // re-trigger animation
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){
+    animEl.style.animationDuration = '.5s';
+  }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+/* ============================================================
+   QUIZZES (SweetAlert2)
+   ============================================================ */
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#39ff88',
+  cancelButtonColor: '#6d7c8c',
+};
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Sobre la evaluación',
+    '¿Cuál es el porcentaje mínimo de asistencia requerido para aprobar el curso?',
+    ['50%','65%','75%','90%'], 2,
+    'La asistencia mínima requerida es del <b>75%</b> de las clases efectivamente dictadas.'
+  );
+  await askMC(
+    'Sobre honestidad académica',
+    '¿Cuál de estos usos de IA generativa es <b>apropiado</b> según el curso?',
+    ['Generar la solución completa de un ejercicio','Parafrasear una explicación para entenderla mejor','Generar la entrega de una evaluación','Copiar una consigna resuelta de internet'], 1,
+    'Parafrasear para comprender mejor es un uso apropiado. Generar soluciones o entregas es una falta grave.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Pasamos al laboratorio de virtualización.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'Virtualización',
+    '¿Cómo se llama la capa de software que permite ejecutar un SO huésped sobre un anfitrión?',
+    ['Kernel','Hipervisor','Bootloader','Firmware'], 1,
+    'Se llama <b>hipervisor</b>. Puede ser de Tipo 1 (bare-metal) o Tipo 2 (hosted, como VirtualBox).'
+  );
+  await askMC(
+    'VirtualBox',
+    '¿Qué necesitás además de VirtualBox para instalar un sistema operativo en una VM?',
+    ['Un segundo monitor','Una imagen ISO del SO','Una impresora conectada','Una licencia de Windows'], 1,
+    'Necesitás la <b>imagen ISO</b> del sistema operativo que vas a instalar en la máquina virtual.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'A por los fundamentos teóricos.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'Definiciones clásicas',
+    'Para Silberschatz, el SO es principalmente...',
+    ['Una máquina extendida que simplifica el hardware','Un administrador de recursos entre procesos','Un programa de instalación','Un antivirus integrado'], 1,
+    'Silberschatz enfatiza el rol del SO como <b>administrador de recursos</b> (CPU, memoria, dispositivos).'
+  );
+  await askMC(
+    'Proceso de arranque',
+    '¿Qué ocurre primero al encender una computadora?',
+    ['Login de usuario','Carga del kernel','POST (Power-On Self Test)','Inicio de servicios de fondo'], 2,
+    'Lo primero es el <b>POST</b>, donde el firmware revisa que el hardware básico funcione.'
+  );
+  await askMC(
+    'Tipos de sistemas operativos',
+    '¿Qué tipo de SO prioriza plazos estrictos de respuesta sobre todo lo demás?',
+    ['Mainframe','Tiempo real','Multiprocesador','PC de escritorio'], 1,
+    'Los sistemas de <b>tiempo real</b> deben garantizar respuestas dentro de plazos estrictos.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase 1 completa!', text:'Nos vemos en la próxima sesión — Unidad 2: Seguridad.'});
+}
+</script>
+</body>
+</html>

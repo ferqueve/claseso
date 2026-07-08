@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Active Directory — Teoría &amp; Laboratorio</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a10;
+  --bg-1:#0d1420;
+  --bg-2:#121b2b;
+  --panel-border:#1f2c40;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --cyan:#5ccfe6;
+  --indigo:#6c8eef;
+  --indigo-dim:#3a4f9e;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(108,142,239,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--indigo); color:#050a18; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,20,32,0.95), rgba(13,20,32,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--indigo); box-shadow:0 0 6px var(--indigo); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--indigo-dim), var(--indigo)); box-shadow:0 0 8px var(--indigo); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--indigo); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--indigo); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(108,142,239,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#3a4a70; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3.4rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--indigo); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:18px; transition:transform .2s, border-color .2s; }
+.card-min:hover{ transform:translateY(-3px); border-color:var(--indigo-dim); }
+.card-min i{ color:var(--cyan); font-size:1.3rem; margin-bottom:8px; display:block; }
+.card-min h4{ font-size:1rem; margin-bottom:4px; }
+.card-min p{ font-size:.85rem; color:var(--text-dim); margin:0; }
+
+/* tree diagram */
+.tree-diagram{ display:flex; flex-direction:column; align-items:center; gap:10px; font-family:var(--mono); font-size:.85rem; }
+.tree-node{ background:var(--bg-1); border:1px solid var(--indigo-dim); color:var(--indigo); border-radius:6px; padding:8px 16px; }
+.tree-children{ display:flex; gap:30px; margin-top:6px; }
+.tree-branch{ display:flex; flex-direction:column; align-items:center; }
+.tree-line{ width:1px; height:16px; background:var(--panel-border); }
+
+table.cmp{ width:100%; border-collapse:collapse; font-size:.9rem; }
+table.cmp th{ font-family:var(--mono); text-transform:uppercase; font-size:.72rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.cmp td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+
+.code-block{
+  background:#04070c; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.8rem; color:var(--cyan); overflow-x:auto; white-space:pre;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-indigo{ color:var(--indigo); }
+.code-block .c-red{ color:var(--red); }
+
+.btn-quiz{
+  background:transparent; border:1px solid var(--indigo-dim); color:var(--indigo);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s;
+}
+.btn-quiz:hover{ background:var(--indigo); color:#050a18; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,20,32,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--indigo); border-color:var(--indigo-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--indigo); box-shadow:0 0 6px var(--indigo); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--indigo) !important; }
+
+.nav-tabs-os .nav-link{ background:var(--bg-1); color:var(--text-dim); border-color:var(--panel-border); font-family:var(--mono); font-size:.85rem; }
+.nav-tabs-os .nav-link.active{ background:var(--bg-2); color:var(--indigo); border-color:var(--indigo-dim); }
+
+@media (max-width: 768px){
+  .mega{ font-size:1.9rem; }
+  h1.title{ font-size:1.5rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .mod-num{ display:none; }
+  .tree-children{ flex-wrap:wrap; justify-content:center; }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> ACTIVE DIRECTORY LAB <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">TEORÍA</div>
+  <div class="seg"><i class="fa-solid fa-sitemap"></i> Teoría + Laboratorio VirtualBox</div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, mtype: opts.mtype || 'teoria'});
+}
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Resolviendo dominio ................... reskit.local</div>
+    <div>[ <span class="ok">OK</span> ] Consultando LDAP ...................... puerto 389</div>
+    <div>[ <span class="ok">OK</span> ] Autenticando con Kerberos ............. ticket obtenido</div>
+  </div>
+  <div class="eyebrow">Laboratorio de directorio</div>
+  <h1 class="mega">Active <span class="kernel">Directory</span></h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Teoría del servicio de directorio + laboratorio con VirtualBox</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 1 · AGENDA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">agenda</div>
+  <h1 class="title">De la <span class="accent">teoría</span> al <span class="accent-amber">laboratorio</span></h1>
+  <div class="grid-cards">
+    <div class="card-min"><i class="fa-solid fa-folder-tree"></i><h4 class="accent-cyan">Parte 1 · Teoría</h4><p>Qué es AD, sus protocolos (LDAP, DNS, Kerberos, X.500) y su estructura (objetos, dominios, árboles, bosques).</p></div>
+    <div class="card-min"><i class="fa-solid fa-network-wired"></i><h4 class="accent-amber">Parte 2 · Laboratorio</h4><p>2 VMs en VirtualBox: un controlador de dominio (Windows Server) y clientes uniéndose — Windows y Linux.</p></div>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 2 · QUE ES AD ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">detalle de active directory</div>
+  <h1 class="title">¿Qué es <span class="accent">Active Directory</span>?</h1>
+  <div class="panel">
+    <p style="font-size:1.05rem; line-height:1.7;">
+      Active Directory es el término comercial de <b>Microsoft</b> para su implementación de un
+      <b>servicio de directorio</b>: un conjunto de objetos, cada uno con atributos, organizados
+      jerárquicamente. Esa jerarquía puede reflejar la estructura organizacional de una empresa,
+      su distribución geográfica, o ambas.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-cube"></i><h4>Objeto</h4><p>Usuario, equipo, impresora, grupo...</p></div>
+    <div class="card-min"><i class="fa-solid fa-tags"></i><h4>Atributo</h4><p>Una característica de ese objeto</p></div>
+    <div class="card-min"><i class="fa-solid fa-sitemap"></i><h4>Jerarquía</h4><p>Orden lógico entre los objetos</p></div>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 3 · PROTOCOLOS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">protocolos utilizados</div>
+  <h1 class="title">Los <span class="accent">4 protocolos</span> detrás de AD</h1>
+  <div class="grid-cards">
+    <div class="card-min">
+      <i class="fa-solid fa-id-badge"></i>
+      <h4>LDAP</h4>
+      <p><b>Lightweight Directory Access Protocol</b> — autentica usuarios y equipos. Versión actual: 3 (RFC 4510/4511).</p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-globe"></i>
+      <h4>DNS</h4>
+      <p><b>Domain Name System</b> — traduce nombres de dominio a direcciones IP; base de datos jerárquica y distribuida.</p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-key"></i>
+      <h4>Kerberos</h4>
+      <p>Protocolo de autenticación de redes (MIT) — demuestra identidad cliente↔servidor con criptografía de clave simétrica.</p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-layer-group"></i>
+      <h4>X.500</h4>
+      <p>Familia de estándares de directorio. LDAP nació como una simplificación de X.500 (DAP) y terminó siendo el más usado.</p>
+    </div>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 4 · COMO SE COMBINAN ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">estructura básica de AD</div>
+  <h1 class="title">Una <span class="accent">base de datos</span>, varios protocolos</h1>
+  <div class="panel">
+    <p>AD es, en el fondo, <b>una única base de datos</b> (que puede estar replicada en varios servidores, incluso distribuida geográficamente). Cada protocolo cumple un rol específico:</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-indigo">DNS</span>     → resolución de nombres en el dominio
+<span class="c-indigo">LDAP</span>    → protocolo clave de acceso al directorio
+<span class="c-indigo">Kerberos</span> → autenticación de usuarios y equipos
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 5 · ATRIBUTOS, OBJETOS, DSA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">conceptos clave · parte 1</div>
+  <h1 class="title">Atributos, <span class="accent">Objetos</span> y el DSA</h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">objeto</div>
+        <p>Un conjunto de atributos que define algo: un usuario, una impresora, una aplicación. Cada objeto tiene una identidad única e inmutable: el <b>GUID</b> (Globally Unique Identifier), asignado al crearse.</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">DSA</div>
+        <p><b>Directory System Agent</b>: el conjunto de servicios que corre en cada dominio y procesa las solicitudes de acceso al almacén de datos.</p>
+      </div>
+    </div>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 6 · CONTENEDORES Y ESQUEMA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">conceptos clave · parte 2</div>
+  <h1 class="title">Contenedores y <span class="accent">Esquema</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">contenedor</div>
+        <p>Una clase de AD que puede aplicarse a otros objetos, incluso a otros contenedores. Agrupa cosas dentro de la estructura.</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">esquema</div>
+        <p>El repositorio con la definición formal de cada clase y objeto del directorio (usuarios, grupos, equipos, políticas...). Se actualiza dinámicamente al crear o modificar objetos.</p>
+      </div>
+    </div>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 7 · DOMINIO Y OU ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">conceptos clave · parte 3</div>
+  <h1 class="title">Dominio y <span class="accent">Unidades Organizativas</span></h1>
+  <div class="panel">
+    <p>El <b>dominio</b> es la base de AD: todo objeto de la red pertenece a un dominio, y sobre ese conjunto se aplican políticas de administración.</p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">unidad organizativa (OU)</div>
+    <p style="margin:0;">Un contenedor dentro de un dominio que agrupa objetos (usuarios, equipos) para simplificar su administración. Las <b>políticas (GPO)</b> solo pueden asignarse a nivel de OU.</p>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 8 · SITIOS Y CATALOGO GLOBAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">conceptos clave · parte 4</div>
+  <h1 class="title">Sitios y <span class="accent">Catálogo Global</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">sitio</div>
+        <p>Agrupación de subredes que comparten un acceso confiable, rápido y con buen ancho de banda entre sí (generalmente la misma LAN). Suele reflejar una ubicación física.</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">catálogo global</div>
+        <p>Permite encontrar objetos en cualquier parte del árbol, buscando por sus atributos. Guarda una copia reducida de cada objeto y se replica en toda la estructura.</p>
+      </div>
+    </div>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 9 · NOMBRE DISTINGUIDO Y DC ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">conceptos clave · parte 5</div>
+  <h1 class="title">El <span class="accent">Nombre Distinguido</span></h1>
+  <div class="panel">
+    <p>Cada objeto tiene un GUID (fijo) y también un nombre legible: el <b>Nombre Distinguido</b>, que incluye el nombre del objeto, su OU y su dominio.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-indigo">CN</span> = Common Name        <span class="c-dim">// nombre propio del objeto</span>
+<span class="c-indigo">OU</span> = Organizational Unit <span class="c-dim">// unidad que lo contiene</span>
+<span class="c-indigo">DC</span> = Domain Controller   <span class="c-dim">// controlador de dominio que lo aloja</span>
+
+<span class="c-dim">// ejemplo</span>
+CN=admin,OU=Empleados,DC=lab,DC=local
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">controlador de dominio (DC)</div>
+    <p style="margin:0;">El servidor que guarda una copia de la base del dominio (lectura/escritura o solo lectura) y hace autenticación, búsquedas y replicación.</p>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 10 · ARBOL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">conceptos clave · parte 6</div>
+  <h1 class="title">Árbol: un espacio de nombres <span class="accent">jerárquico</span></h1>
+  <div class="panel">
+    <div class="tree-diagram">
+      <div class="tree-node">lab.local</div>
+      <div class="tree-line"></div>
+      <div class="tree-children">
+        <div class="tree-branch">
+          <div class="tree-line"></div>
+          <div class="tree-node">sucursal-a.lab.local</div>
+        </div>
+        <div class="tree-branch">
+          <div class="tree-line"></div>
+          <div class="tree-node">sucursal-b.lab.local</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="color:var(--text-dim); font-family:var(--mono); font-size:.8rem; margin-top:12px;">
+    Un árbol nos permite agrupar por límites políticos, geográficos o administrativos, minimizando el intercambio de información entre dominios.
+  </p>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 11 · BOSQUE ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">conceptos clave · parte 7</div>
+  <h1 class="title">Bosque: varios árboles, <span class="accent">una confianza</span></h1>
+  <div class="panel">
+    <p>Un <b>bosque</b> es la conjunción de uno o más árboles que no comparten un nombre de dominio continuo, pero sí una <b>relación de confianza transitiva y bidireccional</b>, un esquema común, una configuración y un catálogo global compartidos.</p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">dominio raíz del bosque</div>
+    <p style="margin:0;">El primer dominio creado en el bosque. Tiene restricciones especiales (no se puede eliminar ni renombrar fácilmente) y es con quien cada nuevo árbol establece su relación de confianza al integrarse.</p>
+  </div>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 12 · QUIZ TEORICO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · teoría</div>
+  <h1 class="title"><i class="fa-solid fa-sitemap accent"></i> Antes de ir al laboratorio...</h1>
+  <p class="subtitle">Repasemos protocolos y estructura de AD</p>
+  <button class="btn-quiz" onclick="quizTeoria()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {mtype:'teoria'});
+
+/* ---------- SLIDE 13 · TRANSICIÓN LABORATORIO ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">laboratorio · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">De la teoría<br>al <span class="kernel" style="color:var(--amber);">dominio real</span></h1>
+  <h2 class="subtitle">2 VMs en VirtualBox: un controlador de dominio y sus clientes</h2>
+</div>
+`, {mtype:'practica'});
+
+/* ---------- SLIDE 14 · ARQUITECTURA DEL LAB ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">arquitectura del laboratorio</div>
+  <h1 class="title">3 máquinas <span class="accent-amber">virtuales</span></h1>
+  <div class="grid-cards">
+    <div class="card-min"><i class="fa-solid fa-server"></i><h4>VM 1 — Controlador de dominio</h4><p>Windows Server 2022, rol AD DS, dominio <code>lab.local</code></p></div>
+    <div class="card-min"><i class="fa-solid fa-desktop"></i><h4>VM 2 — Cliente Windows</h4><p>Windows 10/11, se une al dominio desde el Panel de Sistema</p></div>
+    <div class="card-min"><i class="fa-solid fa-linux"></i><h4>VM 3 — Cliente Linux</h4><p>Ubuntu Desktop, se une vía <code>realmd</code> + SSSD</p></div>
+  </div>
+  <div class="panel warn-box" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">requisito de red</div>
+    <p style="margin:0;">Las 3 VMs deben estar en la misma red interna de VirtualBox (<b>Red interna</b> o <b>Adaptador puente</b>) para poder verse entre sí. En Configuración → Red, elegir el mismo nombre de red interna en las 3.</p>
+  </div>
+</div>
+`, {mtype:'practica'});
+
+/* ---------- SLIDE 15 · INSTALAR AD DS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">paso 1 · controlador de dominio</div>
+  <h1 class="title">Instalar <span class="accent-amber">AD DS</span> en Windows Server</h1>
+  <div class="panel">
+    <div class="term-tag">pasos (Administrador del servidor)</div>
+    <ul class="checklist">
+      <li>Asignar una IP estática a la VM del servidor (ej. <code>192.168.56.10</code>)</li>
+      <li>Administrador del servidor → <b>Agregar roles y características</b></li>
+      <li>Seleccionar <b>Servicios de dominio de Active Directory (AD DS)</b></li>
+      <li>Instalar y esperar a que finalice</li>
+      <li>Click en la notificación → <b>Promover este servidor a controlador de dominio</b></li>
+      <li>Elegir <b>Agregar un nuevo bosque</b> y definir el nombre: <code>lab.local</code></li>
+      <li>Definir la contraseña de <b>DSRM</b> (modo de restauración) y reiniciar</li>
+    </ul>
+  </div>
+</div>
+`, {mtype:'practica'});
+
+/* ---------- SLIDE 16 · CREAR USUARIOS Y OU ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">paso 2 · poblar el directorio</div>
+  <h1 class="title">Crear <span class="accent-amber">OU</span> y usuarios de prueba</h1>
+  <div class="panel">
+    <div class="term-tag">Usuarios y equipos de Active Directory</div>
+    <ul class="checklist">
+      <li>Click derecho sobre <code>lab.local</code> → <b>Nuevo → Unidad organizativa</b> (ej. <code>Ventas</code>)</li>
+      <li>Dentro de esa OU → <b>Nuevo → Usuario</b> (ej. usuario <code>fquevedo</code>)</li>
+      <li>Asignar contraseña y desmarcar "El usuario debe cambiar la contraseña"</li>
+      <li>Verificar que el nombre distinguido sea algo como <code>CN=fquevedo,OU=Ventas,DC=lab,DC=local</code></li>
+    </ul>
+  </div>
+</div>
+`, {mtype:'practica'});
+
+/* ---------- SLIDE 17 · UNIR CLIENTES (TABS) ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">paso 3 · unir los clientes al dominio</div>
+  <h1 class="title">Windows <span class="accent-amber">y</span> Linux, cada uno a su manera</h1>
+
+  <ul class="nav nav-tabs nav-tabs-os" id="osTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="win-tab" data-bs-toggle="tab" data-bs-target="#win-pane" type="button" role="tab">
+        <i class="fa-brands fa-windows"></i> Cliente Windows
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="linux-tab" data-bs-toggle="tab" data-bs-target="#linux-pane" type="button" role="tab">
+        <i class="fa-brands fa-linux"></i> Cliente Linux
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content" style="margin-top:16px;">
+    <div class="tab-pane fade show active" id="win-pane" role="tabpanel">
+      <div class="panel">
+        <div class="term-tag">Windows 10/11</div>
+        <ul class="checklist">
+          <li>Configurar el DNS de la VM para que apunte al controlador de dominio (<code>192.168.56.10</code>)</li>
+          <li>Configuración → Sistema → Acerca de → <b>Unirse a un dominio</b></li>
+          <li>Escribir <code>lab.local</code> y confirmar</li>
+          <li>Ingresar las credenciales de un usuario con permisos (ej. Administrador del dominio)</li>
+          <li>Reiniciar la VM cliente</li>
+          <li>En la pantalla de login, elegir "Otro usuario" e ingresar <code>lab\\fquevedo</code></li>
+        </ul>
+      </div>
+    </div>
+    <div class="tab-pane fade" id="linux-pane" role="tabpanel">
+      <div class="panel">
+        <div class="term-tag">Ubuntu Desktop</div>
+        <div class="code-block">
+<span class="c-dim"># 1. instalar las herramientas necesarias</span>
+<span class="c-green">$</span> sudo apt update
+<span class="c-green">$</span> sudo apt install -y realmd sssd sssd-tools \\
+    libnss-sss libpam-sss adcli samba-common-bin
+
+<span class="c-dim"># 2. configurar el DNS para que apunte al controlador de dominio</span>
+<span class="c-green">$</span> sudo nano /etc/systemd/resolved.conf
+<span class="c-dim">#   DNS=192.168.56.10</span>
+<span class="c-green">$</span> sudo systemctl restart systemd-resolved
+
+<span class="c-dim"># 3. descubrir el dominio</span>
+<span class="c-green">$</span> sudo realm discover lab.local
+
+<span class="c-dim"># 4. unirse al dominio</span>
+<span class="c-green">$</span> sudo realm join lab.local -U fquevedo
+
+<span class="c-dim"># 5. permitir login con el usuario de dominio</span>
+<span class="c-green">$</span> su - fquevedo@lab.local
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`, {mtype:'practica'});
+
+/* ---------- SLIDE 18 · VERIFICACION ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">paso 4 · verificación</div>
+  <h1 class="title">¿Los dos clientes <span class="accent-amber">confían</span> en el dominio?</h1>
+  <div class="panel">
+    <div class="term-tag">checklist de validación</div>
+    <ul class="checklist">
+      <li>Ambas VMs cliente resuelven <code>lab.local</code> por DNS (probar con <code>ping lab.local</code>)</li>
+      <li>El cliente Windows aparece en <b>Usuarios y equipos de AD</b>, dentro de <code>Computers</code></li>
+      <li>El cliente Linux aparece igual al ejecutar <code>realm list</code> con estado "configured"</li>
+      <li>El usuario <code>fquevedo</code> puede iniciar sesión en ambos clientes con la misma contraseña</li>
+      <li>Al cambiar la contraseña en el DC, el cambio se refleja en ambos clientes</li>
+    </ul>
+  </div>
+</div>
+`, {mtype:'practica'});
+
+/* ---------- SLIDE 19 · QUIZ FINAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · laboratorio</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre del laboratorio</h1>
+  <p class="subtitle">Últimas preguntas antes de terminar</p>
+  <button class="btn-quiz" onclick="quizLab()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {mtype:'practica'});
+
+/* ---------- SLIDE 20 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:2.6rem;">Tu dominio ya<br><span class="kernel">tiene 2 clientes</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">para profundizar</div>
+    <ul class="checklist">
+      <li>Crear una GPO simple y aplicarla a la OU de Ventas</li>
+      <li>Explorar el catálogo global con <code>ldapsearch</code> desde el cliente Linux</li>
+      <li>Investigar cómo se vería un segundo dominio dentro del mismo bosque</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada — cerrando directorio...</div>
+</div>
+`, {mtype:'practica'});
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = s.mtype === 'teoria' ? 'TEORÍA' : 'LABORATORIO';
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+/* ============================================================
+   QUIZZES (SweetAlert2)
+   ============================================================ */
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#6c8eef',
+  cancelButtonColor: '#6d7c8c',
+};
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizTeoria(){
+  await askMC(
+    'Protocolos de AD',
+    '¿Qué protocolo se usa principalmente para autenticar usuarios y equipos en AD?',
+    ['DNS','LDAP','X.500','SMTP'], 1,
+    '<b>LDAP</b> (Lightweight Directory Access Protocol) es el protocolo de acceso y autenticación al directorio.'
+  );
+  await askMC(
+    'Estructura de AD',
+    '¿Qué es un "bosque" en Active Directory?',
+    ['Un solo dominio con muchos usuarios','La conjunción de uno o más árboles que comparten confianza, esquema y catálogo global','Un tipo de firewall','Un grupo de impresoras compartidas'], 1,
+    'Un <b>bosque</b> agrupa árboles que no comparten un nombre de dominio continuo, pero sí una relación de confianza, esquema, configuración y catálogo global comunes.'
+  );
+  await askMC(
+    'Nombre distinguido',
+    'En "CN=fquevedo,OU=Ventas,DC=lab,DC=local", ¿qué representa "OU"?',
+    ['El nombre del usuario','La unidad organizativa que contiene al objeto','El controlador de dominio','El protocolo de autenticación'], 1,
+    '<b>OU</b> (Organizational Unit) es la unidad organizativa que contiene al objeto dentro del dominio.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Teoría completa', text:'Ahora sí, al laboratorio con VirtualBox.'});
+}
+
+async function quizLab(){
+  await askMC(
+    'Controlador de dominio',
+    '¿Qué rol de Windows Server hay que instalar para crear un controlador de dominio?',
+    ['DHCP','AD DS (Servicios de dominio de Active Directory)','IIS','Hyper-V'], 1,
+    '<b>AD DS</b> (Active Directory Domain Services) es el rol que convierte a un Windows Server en controlador de dominio.'
+  );
+  await askMC(
+    'Cliente Linux',
+    '¿Qué herramienta usamos en Ubuntu para unirse a un dominio de Active Directory?',
+    ['apt join','realm join','systemctl join-domain','ssh-join'], 1,
+    '<code>realm join</code> (del paquete realmd) es el comando estándar para unir un cliente Linux a un dominio AD vía SSSD.'
+  );
+  await askMC(
+    'Requisito de red',
+    '¿Por qué el DNS del cliente debe apuntar al controlador de dominio?',
+    ['Para que la VM tenga internet','Porque el DC resuelve los nombres del dominio, necesarios para encontrarlo y autenticarse','Para ahorrar memoria RAM','No es necesario configurarlo'], 1,
+    'El controlador de dominio actúa como servidor DNS del dominio; sin apuntar a él, el cliente no puede localizar los servicios de AD.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Laboratorio completo!', text:'Ya tenés un dominio funcionando con clientes Windows y Linux.'});
+}
+</script>
+</body>
+</html>

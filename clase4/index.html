@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 4 — C Mínimo &amp; Modo Protegido</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --cyan:#5ccfe6;
+  --blue:#4ea1ff;
+  --blue-dim:#1f5aa8;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(78,161,255,0.06), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--blue); color:#04101f; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--blue); box-shadow:0 0 6px var(--blue); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--blue-dim), var(--blue)); box-shadow:0 0 8px var(--blue); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--blue); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--blue); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+.accent-red{ color:var(--red); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(78,161,255,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#2a5a8a; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3.4rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--blue); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+ul.checklist.no li::before{ content:'\f00d'; color:var(--red); }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:18px; transition:transform .2s, border-color .2s; }
+.card-min:hover{ transform:translateY(-3px); border-color:var(--blue-dim); }
+.card-min i{ color:var(--cyan); font-size:1.3rem; margin-bottom:8px; display:block; }
+.card-min h4{ font-size:1rem; margin-bottom:4px; }
+.card-min p{ font-size:.85rem; color:var(--text-dim); margin:0; }
+
+table.cmp{ width:100%; border-collapse:collapse; font-size:.9rem; }
+table.cmp th{ font-family:var(--mono); text-transform:uppercase; font-size:.72rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.cmp td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.82rem; color:var(--cyan); overflow-x:auto; white-space:pre;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-blue{ color:var(--blue); }
+.code-block .c-red{ color:var(--red); }
+
+.btn-quiz{
+  background:transparent; border:1px solid var(--blue-dim); color:var(--blue);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s;
+}
+.btn-quiz:hover{ background:var(--blue); color:#04101f; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--blue); border-color:var(--blue-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--blue); box-shadow:0 0 6px var(--blue); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--blue) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:1.9rem; }
+  h1.title{ font-size:1.5rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .mod-num{ display:none; }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-regular fa-clock"></i> <span id="clockLabel">18:15 – 19:35</span></div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria', clock: opts.clock || ''});
+}
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Retomando sesión ...................... clase_04.iso</div>
+    <div>[ <span class="ok">OK</span> ] Cargando subconjunto de lenguaje ...... c_freestanding.h</div>
+    <div>[ <span class="ok">OK</span> ] Preparando transición ................. modo real → modo protegido</div>
+  </div>
+  <div class="eyebrow">boot sequence · clase 04</div>
+  <h1 class="mega">C mínimo <span class="kernel">&amp;</span><br>Modo Protegido</h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Unidad 4: Procesos — el subconjunto de C que necesita un kernel</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 1 · REPASO + POR QUE C ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">antes de arrancar</div>
+  <h1 class="title">No van a "aprender <span class="accent">C</span>" hoy</h1>
+  <div class="panel">
+    <p style="font-size:1.05rem; line-height:1.7;">
+      Van a aprender el <b>subconjunto mínimo</b> que un kernel necesita: tipos, punteros, structs y funciones.
+      Nada de librería estándar, nada de <code>printf</code>, nada de <code>malloc</code>. Es menos "aprender un lenguaje nuevo"
+      y más "una forma un poco distinta de escribir la lógica que ya saben plantear".
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-memory"></i><h4>¿Por qué no solo ASM?</h4><p>Structs y funciones hacen manejable un kernel real</p></div>
+    <div class="card-min"><i class="fa-solid fa-microchip"></i><h4>¿Por qué no Java/C#?</h4><p>Necesitan un runtime que un kernel de juguete no tiene</p></div>
+    <div class="card-min"><i class="fa-solid fa-code"></i><h4>El punto medio</h4><p>C freestanding: control total, sin depender de un SO</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 2 · C NORMAL VS C FREESTANDING ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">C normal vs. C "freestanding"</div>
+  <h1 class="title">Lo que <span class="accent">sí</span> y lo que <span class="accent-red">no</span> vamos a usar</h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">disponible</div>
+        <ul class="checklist">
+          <li>Tipos: <code>int</code>, <code>char</code>, <code>unsigned char</code>, etc.</li>
+          <li>Punteros y arreglos</li>
+          <li>Structs</li>
+          <li>Funciones y control de flujo (if/while/for)</li>
+          <li>Operadores a nivel de bits</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag" style="border-color:var(--red); color:var(--red);">no disponible (todavía)</div>
+        <ul class="checklist no">
+          <li><code>printf</code>, <code>scanf</code> — no hay librería estándar</li>
+          <li><code>malloc</code> / <code>free</code> — no hay gestor de memoria propio (aún)</li>
+          <li>Excepciones, try/catch — eso no existe en C</li>
+          <li>Cualquier <code>#include</code> del sistema operativo anfitrión</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 3 · SINTAXIS MINIMA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">lo esencial</div>
+  <h1 class="title">La <span class="accent">sintaxis</span> que vamos a usar</h1>
+  <div class="code-block">
+<span class="c-dim">// tipos y variables</span>
+<span class="c-blue">unsigned char</span> c = <span class="c-amber">'A'</span>;
+<span class="c-blue">unsigned short</span> valor = <span class="c-amber">1234</span>;
+
+<span class="c-dim">// puntero: una dirección de memoria</span>
+<span class="c-blue">unsigned char</span> *pantalla = (<span class="c-blue">unsigned char</span>*) <span class="c-green">0xb8000</span>;
+
+<span class="c-dim">// struct: agrupar datos relacionados</span>
+<span class="c-blue">struct</span> proceso {
+    <span class="c-blue">int</span> id;
+    <span class="c-blue">int</span> estado;
+};
+
+<span class="c-dim">// función simple, sin librería estándar</span>
+<span class="c-blue">void</span> escribir_caracter(<span class="c-blue">char</span> c, <span class="c-blue">int</span> pos) {
+    pantalla[pos] = c;
+}
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 4 · QUIZ MODULO 1 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-code accent"></i> Antes de compilar...</h1>
+  <p class="subtitle">Repasemos qué es "C freestanding"</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 5 · TRANSICIÓN MÓDULO 2 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">De modo real<br>a <span class="kernel" style="color:var(--amber);">modo protegido</span></h1>
+  <h2 class="subtitle">El paso que nos deja usar C de verdad</h2>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 6 · POR QUE MODO PROTEGIDO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">modo real vs. modo protegido</div>
+  <h1 class="title">¿Por qué <span class="accent-amber">no alcanza</span> el modo real?</h1>
+  <div class="panel">
+    <p>El bootloader de la clase pasada corrió en <b>modo real</b>: solo 1 MB de memoria accesible y direcciones de 16 bits.
+    Para correr C "de verdad" (con más memoria y un modelo de direcciones normal) necesitamos pasar a
+    <b>modo protegido</b>: 32 bits, acceso a toda la memoria, y la base para multitarea más adelante.</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-lock"></i><h4>Modo real</h4><p>16 bits, 1 MB, sin protección de memoria</p></div>
+    <div class="card-min"><i class="fa-solid fa-lock-open"></i><h4>Modo protegido</h4><p>32 bits, 4 GB direccionables, aísla procesos</p></div>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 7 · GDT ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">la pieza que falta: GDT</div>
+  <h1 class="title">La <span class="accent-amber">Tabla Global de Descriptores</span></h1>
+  <div class="panel">
+    <p>Antes de saltar a modo protegido, la CPU necesita una <b>GDT</b> (Global Descriptor Table): una tabla que define
+    los segmentos de código y datos disponibles. Es un requisito obligatorio del procesador, no una opción de diseño nuestra.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">; gdt.asm — una GDT mínima con 3 entradas</span>
+gdt_start:
+    dq 0                      <span class="c-dim">; descriptor nulo obligatorio</span>
+
+gdt_code:                     <span class="c-dim">; segmento de código, 0-4GB</span>
+    dw 0xffff, 0
+    db 0, 10011010b, 11001111b, 0
+
+gdt_data:                     <span class="c-dim">; segmento de datos, 0-4GB</span>
+    dw 0xffff, 0
+    db 0, 10010010b, 11001111b, 0
+gdt_end:
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 8 · SALTO A MODO PROTEGIDO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">el salto</div>
+  <h1 class="title">Activar el bit y <span class="accent-amber">saltar</span></h1>
+  <div class="code-block">
+<span class="c-dim">; dentro de boot.asm, después de cargar la GDT</span>
+cli                          <span class="c-dim">; deshabilitar interrupciones</span>
+lgdt [gdt_descriptor]        <span class="c-dim">; cargar la GDT</span>
+
+mov eax, cr0
+or eax, 1                    <span class="c-dim">; activar el bit PE (Protection Enable)</span>
+mov cr0, eax
+
+jmp CODE_SEG:init_pm         <span class="c-dim">; salto lejano para "purgar" el pipeline</span>
+
+[bits 32]
+init_pm:
+    mov ax, DATA_SEG
+    mov ds, ax
+    mov ss, ax
+    <span class="c-dim">; ya estamos en modo protegido de 32 bits</span>
+    call KERNEL_OFFSET        <span class="c-dim">; saltamos a nuestro kernel en C</span>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 9 · QUIZ MODULO 2 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-unlock accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Sobre la GDT y el salto a modo protegido</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 10 · TRANSICIÓN MÓDULO 3 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">Tu primer<br><span class="kernel">kernel en C</span></h1>
+  <h2 class="subtitle">kmain(), la pantalla y el Makefile completo</h2>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 11 · KERNEL.C ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · kernel.c</div>
+  <h1 class="title">Escribir texto <span class="accent">directo a pantalla</span></h1>
+  <div class="panel">
+    <p>En modo protegido, la memoria de video de texto sigue estando en <code>0xb8000</code>. Cada carácter ocupa 2 bytes:
+    el carácter y su atributo de color. Sin <code>printf</code>, escribimos ahí directamente.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// kernel.c</span>
+<span class="c-blue">void</span> kmain(<span class="c-blue">void</span>) {
+    <span class="c-blue">char</span> *video = (<span class="c-blue">char</span>*) <span class="c-green">0xb8000</span>;
+    <span class="c-blue">char</span> *mensaje = <span class="c-amber">"Hello from C kernel!"</span>;
+    <span class="c-blue">int</span> i = 0;
+
+    <span class="c-blue">while</span> (mensaje[i] != <span class="c-amber">0</span>) {
+        video[i*2]   = mensaje[i];   <span class="c-dim">// carácter</span>
+        video[i*2+1] = <span class="c-green">0x0f</span>;         <span class="c-dim">// blanco brillante sobre negro</span>
+        i++;
+    }
+
+    <span class="c-blue">while</span> (<span class="c-green">1</span>) { } <span class="c-dim">// el kernel no debe "terminar"</span>
+}
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 12 · COMPILAR Y LINKEAR ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">de C a binario</div>
+  <h1 class="title">Compilar <span class="accent">sin librería estándar</span></h1>
+  <div class="code-block">
+<span class="c-dim"># compilar kernel.c en modo freestanding, sin libc</span>
+<span class="c-green">$</span> gcc -m32 -ffreestanding -fno-stack-protector \\
+    -nostdlib -c kernel.c -o kernel.o
+
+<span class="c-dim"># ensamblar el stub de arranque en modo protegido</span>
+<span class="c-green">$</span> nasm -f elf32 boot.asm -o boot.o
+
+<span class="c-dim"># linkear todo con un linker script propio</span>
+<span class="c-green">$</span> ld -m elf_i386 -T linker.ld -o kernel.bin \\
+    boot.o kernel.o
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">flags clave</div>
+    <p style="margin:0;"><code>-ffreestanding</code> le dice a GCC que no asuma un SO debajo. <code>-nostdlib</code> evita enlazar la librería estándar de C, que no existe en nuestro kernel.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 13 · MAKEFILE ACTUALIZADO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">automatización</div>
+  <h1 class="title">El <span class="accent">Makefile</span> del proyecto, ahora con C</h1>
+  <div class="code-block">
+<span class="c-blue">all:</span> kernel.bin
+
+<span class="c-blue">boot.o:</span> boot.asm
+	nasm -f elf32 boot.asm -o boot.o
+
+<span class="c-blue">kernel.o:</span> kernel.c
+	gcc -m32 -ffreestanding -fno-stack-protector -nostdlib -c kernel.c -o kernel.o
+
+<span class="c-blue">kernel.bin:</span> boot.o kernel.o linker.ld
+	ld -m elf_i386 -T linker.ld -o kernel.bin boot.o kernel.o
+
+<span class="c-blue">run:</span> kernel.bin
+	qemu-system-i386 -kernel kernel.bin
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 14 · QUIZ FINAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase 04</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre de la clase</h1>
+  <p class="subtitle">Últimas preguntas antes de irnos</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 15 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:2.6rem;">Tu kernel ya<br><span class="kernel">habla en C</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">para la próxima</div>
+    <ul class="checklist">
+      <li>Confirmar que <code>kernel.bin</code> corre en QEMU y muestra el mensaje</li>
+      <li>Repasar: modo real → GDT → modo protegido → kmain()</li>
+      <li>Seguimos con procesos: cómo representar y planificar tareas simples</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada — apagando terminal...</div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  document.getElementById('clockLabel').textContent = s.clock;
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+/* ============================================================
+   QUIZZES (SweetAlert2)
+   ============================================================ */
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#4ea1ff',
+  cancelButtonColor: '#6d7c8c',
+};
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'C freestanding',
+    '¿Cuál de estas SÍ podemos usar en nuestro C mínimo para el kernel?',
+    ['printf()','malloc()','structs y punteros','try/catch'], 2,
+    'Structs, punteros, tipos y funciones están disponibles. printf, malloc y las excepciones dependen de una librería estándar que no tenemos.'
+  );
+  await askMC(
+    '¿Por qué C y no Java o C#?',
+    '¿Cuál es la razón principal para no usar un lenguaje como Java o C# en el kernel?',
+    ['Son más lentos para escribir','Necesitan un runtime que un kernel de juguete no tiene','No permiten usar variables','No existen compiladores para esos lenguajes'], 1,
+    'Java y C# dependen de una máquina virtual o runtime que a su vez corre sobre un sistema operativo — algo que nuestro kernel todavía no es.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora sí, a pasar a modo protegido.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'GDT',
+    '¿Para qué sirve la Tabla Global de Descriptores (GDT)?',
+    ['Para guardar contraseñas de usuario','Para definir los segmentos de memoria antes de entrar en modo protegido','Para acelerar el disco duro','Para configurar el teclado'], 1,
+    'La GDT define los segmentos de código y datos que la CPU va a usar en modo protegido — es un requisito del procesador.'
+  );
+  await askMC(
+    'Modo protegido',
+    '¿Qué bit del registro CR0 activa el modo protegido?',
+    ['El bit 0 (PE, Protection Enable)','El bit 7','El bit 31','No hay ningún bit, es automático'], 0,
+    'Activar el bit <b>PE</b> (bit 0) de <code>CR0</code> es lo que efectivamente pone a la CPU en modo protegido.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora escribimos el primer kernel en C.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'kernel.c',
+    '¿En qué dirección de memoria escribimos directamente para mostrar texto en pantalla?',
+    ['0x0000','0x7c00','0xb8000','0xFFFF'], 2,
+    'La memoria de video en modo texto está mapeada en <b>0xb8000</b>; cada carácter ocupa 2 bytes (carácter + atributo de color).'
+  );
+  await askMC(
+    'Compilación',
+    '¿Qué flag le indica a GCC que no asuma que hay un sistema operativo debajo?',
+    ['-O2','-ffreestanding','-Wall','-g'], 1,
+    '<code>-ffreestanding</code> es la bandera clave: le dice al compilador que no puede asumir librería estándar ni entorno de SO.'
+  );
+  await askMC(
+    'El bucle final',
+    '¿Por qué kmain() termina con un while(1) {} vacío?',
+    ['Por error de tipeo','Porque el kernel no debe "terminar" — no hay nada a donde volver','Para consumir toda la memoria','Para probar la CPU'], 1,
+    'Un kernel no puede simplemente "retornar": no hay un sistema operativo debajo esperando el control de vuelta, así que se queda en un bucle infinito.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase 4 completa!', text:'Nos vemos en la próxima sesión — seguimos con procesos y planificación.'});
+}
+</script>
+</body>
+</html>

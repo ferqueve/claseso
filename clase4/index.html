@@ -426,7 +426,96 @@ SECTIONS
 </div>
 `, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
 
-/* ---------- SLIDE 9 · QUIZ MODULO 2 ---------- */
+/* ---------- SLIDE 8C · BOOT.ASM COMPLETO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">el archivo completo, no fragmentos</div>
+  <h1 class="title">Tu <span class="accent-amber">boot.asm</span> real</h1>
+  <div class="panel" style="border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">atención</div>
+    <p style="margin:0;">Los pedazos de código de las diapositivas anteriores <b>no alcanzan por sí solos</b> — usan <code>KERNEL_OFFSET</code>, <code>BOOT_DRIVE</code> y <code>leer_disco</code> sin definirlos. Este es el archivo completo y armable con <code>nasm -f bin boot.asm -o boot.bin</code>, sin errores.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px; max-height:340px; overflow-y:auto;">
+<span class="c-dim">[org 0x7c00]
+[bits 16]
+
+; el BIOS pasa el número de unidad de arranque en DL — lo guardamos</span>
+mov [BOOT_DRIVE], dl
+
+mov si, mensaje_bienvenida
+call imprimir_string
+
+mov bx, KERNEL_OFFSET
+mov dh, 15
+mov dl, [BOOT_DRIVE]
+call leer_disco
+
+cli
+lgdt [gdt_descriptor]
+mov eax, cr0
+or eax, 1
+mov cr0, eax
+jmp CODE_SEG:init_pm
+
+imprimir_string:
+    lodsb
+    cmp al, 0
+    je .listo
+    mov ah, 0x0e
+    int 0x10
+    jmp imprimir_string
+.listo:
+    ret
+
+leer_disco:
+    mov ah, 0x02
+    mov al, dh
+    mov ch, 0x00
+    mov cl, 0x02
+    mov dh, 0x00
+    int 0x13
+    jc disco_error
+    ret
+
+disco_error:
+    mov si, mensaje_error
+    call imprimir_string
+    jmp $
+
+KERNEL_OFFSET equ 0x1000
+BOOT_DRIVE:         db 0
+mensaje_bienvenida: db 'Hello, Toy OS!', 0
+mensaje_error:      db 'Error al leer disco', 0
+
+gdt_start:
+    dq 0
+gdt_code:
+    dw 0xffff, 0
+    db 0, 10011010b, 11001111b, 0
+gdt_data:
+    dw 0xffff, 0
+    db 0, 10010010b, 11001111b, 0
+gdt_end:
+
+gdt_descriptor:
+    dw gdt_end - gdt_start - 1
+    dd gdt_start
+
+CODE_SEG equ gdt_code - gdt_start
+DATA_SEG equ gdt_data - gdt_start
+
+[bits 32]
+init_pm:
+    mov ax, DATA_SEG
+    mov ds, ax
+    mov ss, ax
+    call KERNEL_OFFSET
+
+times 510-($-$$) db 0
+dw 0xaa55
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
   <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
@@ -712,6 +801,12 @@ async function quizModulo2(){
     '¿Qué bit del registro CR0 activa el modo protegido?',
     ['El bit 0 (PE, Protection Enable)','El bit 7','El bit 31','No hay ningún bit, es automático'], 0,
     'Activar el bit <b>PE</b> (bit 0) de <code>CR0</code> es lo que efectivamente pone a la CPU en modo protegido.'
+  );
+  await askMC(
+    'Ensamblando de verdad',
+    'Si tu boot.asm usa KERNEL_OFFSET, BOOT_DRIVE o leer_disco sin definirlos en el archivo, ¿qué va a pasar al ensamblarlo?',
+    ['NASM los asume como 0 automáticamente y sigue','NASM da error: "symbol not defined" y puede fallar también en otras líneas por offsets inestables','Funciona igual, son opcionales','Solo falla al correr en QEMU, no al ensamblar'], 1,
+    'NASM necesita que todo símbolo esté definido en el archivo (o importado con extern). Si falta, además del error directo, pueden aparecer errores de labels que "cambian de offset" en otras líneas, como efecto colateral.'
   );
   Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora escribimos el primer kernel en C.'});
 }

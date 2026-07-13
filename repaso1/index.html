@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Repaso General — Checkpoint del Proyecto</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --gold:#ffd166;
+  --gold-dim:#8a6f1f;
+  --green:#39ff88;
+  --red:#ff5c7a;
+  --violet:#b98eff;
+  --blue:#4ea1ff;
+  --teal:#2dd4bf;
+  --pink:#ff6ec7;
+  --coral:#ff7d59;
+  --cyan:#5ccfe6;
+  --amber:#ffb454;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(255,209,102,0.06), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--gold); color:#211a05; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--gold); box-shadow:0 0 6px var(--gold); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#score-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid var(--gold); color:var(--gold); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--gold-dim), var(--gold)); box-shadow:0 0 8px var(--gold); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--gold); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--gold); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,209,102,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#7a6a30; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3.2rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--gold); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:16px; transition:transform .2s, border-color .2s; position:relative; }
+.card-min:hover{ transform:translateY(-3px); }
+.card-min i{ font-size:1.2rem; margin-bottom:6px; display:block; }
+.card-min h4{ font-size:.95rem; margin-bottom:3px; }
+.card-min p{ font-size:.82rem; color:var(--text-dim); margin:0; }
+.unit-tag{ font-family:var(--mono); font-size:.65rem; position:absolute; top:10px; right:10px; padding:1px 6px; border-radius:3px; border:1px solid currentColor; }
+
+/* roadmap of classes given so far */
+.roadmap{ display:flex; flex-direction:column; gap:2px; }
+.rm-row{ display:grid; grid-template-columns:70px 1fr; align-items:center; gap:14px; }
+.rm-label{ font-family:var(--mono); font-size:.78rem; color:var(--text-dim); text-align:right; }
+.rm-track{ background:var(--bg-2); border-radius:4px; height:28px; position:relative; overflow:hidden; border:1px solid var(--panel-border); display:flex; align-items:center; padding-left:10px; font-family:var(--mono); font-size:.75rem; color:#04120a; }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.8rem; color:var(--cyan); overflow-x:auto; white-space:pre;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-gold{ color:var(--gold); }
+
+.btn-quiz{
+  background:transparent; border:1px solid var(--gold-dim); color:var(--gold);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s;
+}
+.btn-quiz:hover{ background:var(--gold); color:#211a05; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--gold); border-color:var(--gold-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--gold); box-shadow:0 0 6px var(--gold); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--gold) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:1.8rem; }
+  h1.title{ font-size:1.5rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="score-badge">PUNTAJE: 0 / 0</div>
+  <div class="seg"><i class="fa-solid fa-list-check"></i> Repaso general</div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html){ slides.push({html}); }
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Recargando checkpoint .................. clases 1-7</div>
+    <div>[ <span class="ok">OK</span> ] Verificando integridad del kernel ....... boot + C + procesos + memoria</div>
+    <div>[ <span class="ok">OK</span> ] Preparando repaso acumulativo</div>
+  </div>
+  <div class="eyebrow">checkpoint · repaso general</div>
+  <h1 class="mega">Repaso: del <span class="kernel">boot</span><br>a la memoria</h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Asentando la teoría antes de seguir con archivos</h2>
+  <div class="panel" style="max-width:640px; margin-bottom:20px; border-color:var(--gold);">
+    <div class="term-tag" style="border-color:var(--gold); color:var(--gold);">tarea obligatoria</div>
+    <p style="margin:0;">Completá los 4 bloques y el simulacro integrador <b>antes de la próxima clase</b>. Al final vas a generar un <b>código de entrega</b> — copialo y enviámelo por el canal del curso como constancia de haberlo hecho.</p>
+  </div>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> para navegar · el puntaje se acumula arriba a medida que respondés
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 1 · MAPA DE LO ANDADO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">el camino hasta acá</div>
+  <h1 class="title">7 clases, <span class="accent">un solo kernel</span></h1>
+  <div class="panel">
+    <div class="roadmap">
+      <div class="rm-row"><div class="rm-label">Clase 1</div><div class="rm-track" style="background:#1f8a52;">Virtualización — VirtualBox, fundamentos de SO</div></div>
+      <div class="rm-row"><div class="rm-label">Clase 2</div><div class="rm-track" style="background:#a3122f;">Seguridad — AAA, ataques/defensas, permisos</div></div>
+      <div class="rm-row"><div class="rm-label">Clase 3</div><div class="rm-track" style="background:#6a3fa8;">Bootloader — NASM, 0x7c00, QEMU</div></div>
+      <div class="rm-row"><div class="rm-label">Clase 4</div><div class="rm-track" style="background:#1f5aa8;">C mínimo + modo protegido — GDT, kernel.c</div></div>
+      <div class="rm-row"><div class="rm-label">Clase 5</div><div class="rm-track" style="background:#0f7a6d;">Procesos — PCB, estados, scheduler round-robin</div></div>
+      <div class="rm-row"><div class="rm-label">Clase 6</div><div class="rm-track" style="background:#8a2f6d;">Sincronización — semáforos, productor-consumidor</div></div>
+      <div class="rm-row"><div class="rm-label">Clase 7</div><div class="rm-track" style="background:#8a3f26;">Memoria — kmalloc/kfree, bump allocator, free-list</div></div>
+    </div>
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 2 · BLOQUE 1: FUNDAMENTOS Y SEGURIDAD ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">bloque 1 · clases 1-2</div>
+  <h1 class="title">Fundamentos y <span class="accent">Seguridad</span></h1>
+  <div class="grid-cards">
+    <div class="card-min" style="border-color:#1f8a52;">
+      <span class="unit-tag" style="color:#39ff88;">U1</span>
+      <i class="fa-solid fa-layer-group" style="color:#39ff88;"></i>
+      <h4>Virtualización</h4>
+      <p>Hipervisor tipo 1 vs. tipo 2. VirtualBox crea la VM sobre la que corre todo el kernel de juguete.</p>
+    </div>
+    <div class="card-min" style="border-color:#1f8a52;">
+      <span class="unit-tag" style="color:#39ff88;">U1</span>
+      <i class="fa-solid fa-power-off" style="color:#39ff88;"></i>
+      <h4>Proceso de arranque</h4>
+      <p>POST → BIOS/UEFI → bootloader → kernel → servicios → sesión.</p>
+    </div>
+    <div class="card-min" style="border-color:#a3122f;">
+      <span class="unit-tag" style="color:#ff5c7a;">U2</span>
+      <i class="fa-solid fa-key" style="color:#ff5c7a;"></i>
+      <h4>Control de acceso (AAA)</h4>
+      <p>Identificación → Autenticación → Autorización.</p>
+    </div>
+    <div class="card-min" style="border-color:#a3122f;">
+      <span class="unit-tag" style="color:#ff5c7a;">U2</span>
+      <i class="fa-solid fa-bug" style="color:#ff5c7a;"></i>
+      <h4>Ataques y defensas</h4>
+      <p>Fuerza bruta, phishing, escalado de privilegios — vs. MFA, mínimo privilegio, logs.</p>
+    </div>
+  </div>
+  <div style="margin-top:20px; text-align:center;">
+    <button class="btn-quiz" onclick="quizBloque1()"><i class="fa-solid fa-play"></i> Repasar bloque 1</button>
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 3 · BLOQUE 2: BOOTLOADER Y C MINIMO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">bloque 2 · clases 3-4</div>
+  <h1 class="title">Bootloader y <span class="accent">C Mínimo</span></h1>
+  <div class="grid-cards">
+    <div class="card-min" style="border-color:#6a3fa8;">
+      <span class="unit-tag" style="color:#b98eff;">U3</span>
+      <i class="fa-solid fa-microchip" style="color:#b98eff;"></i>
+      <h4>El sector de arranque</h4>
+      <p>BIOS carga 512 bytes en <code>0x7c00</code>, valida la firma <code>0x55AA</code> y salta ahí.</p>
+    </div>
+    <div class="card-min" style="border-color:#6a3fa8;">
+      <span class="unit-tag" style="color:#b98eff;">U3</span>
+      <i class="fa-solid fa-gears" style="color:#b98eff;"></i>
+      <h4>Toolchain</h4>
+      <p>NASM ensambla, GCC compila, LD linkea, QEMU ejecuta, Make automatiza todo.</p>
+    </div>
+    <div class="card-min" style="border-color:#1f5aa8;">
+      <span class="unit-tag" style="color:#4ea1ff;">U4</span>
+      <i class="fa-solid fa-code" style="color:#4ea1ff;"></i>
+      <h4>C freestanding</h4>
+      <p>Structs, punteros y funciones — sin printf, malloc ni librería estándar.</p>
+    </div>
+    <div class="card-min" style="border-color:#1f5aa8;">
+      <span class="unit-tag" style="color:#4ea1ff;">U4</span>
+      <i class="fa-solid fa-unlock" style="color:#4ea1ff;"></i>
+      <h4>Modo protegido</h4>
+      <p>GDT obligatoria + bit PE de CR0 activado + salto lejano a 32 bits.</p>
+    </div>
+  </div>
+  <div style="margin-top:20px; text-align:center;">
+    <button class="btn-quiz" onclick="quizBloque2()"><i class="fa-solid fa-play"></i> Repasar bloque 2</button>
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 4 · BLOQUE 3: PROCESOS Y SINCRONIZACION ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">bloque 3 · clases 5-6</div>
+  <h1 class="title">Procesos y <span class="accent">Sincronización</span></h1>
+  <div class="grid-cards">
+    <div class="card-min" style="border-color:#0f7a6d;">
+      <span class="unit-tag" style="color:#2dd4bf;">U4</span>
+      <i class="fa-solid fa-id-card" style="color:#2dd4bf;"></i>
+      <h4>PCB y estados</h4>
+      <p>Nuevo → Listo → Corriendo → Terminado, con el ciclo Corriendo ↔ Bloqueado.</p>
+    </div>
+    <div class="card-min" style="border-color:#0f7a6d;">
+      <span class="unit-tag" style="color:#2dd4bf;">U4</span>
+      <i class="fa-solid fa-shuffle" style="color:#2dd4bf;"></i>
+      <h4>Scheduler round-robin</h4>
+      <p>Cooperativo: cada proceso cede la CPU con <code>proceso_yield()</code>.</p>
+    </div>
+    <div class="card-min" style="border-color:#8a2f6d;">
+      <span class="unit-tag" style="color:#ff6ec7;">U4</span>
+      <i class="fa-solid fa-traffic-light" style="color:#ff6ec7;"></i>
+      <h4>Semáforos</h4>
+      <p><code>sem_wait()</code> / <code>sem_signal()</code> protegen la sección crítica.</p>
+    </div>
+    <div class="card-min" style="border-color:#8a2f6d;">
+      <span class="unit-tag" style="color:#ff6ec7;">U4</span>
+      <i class="fa-solid fa-people-group" style="color:#ff6ec7;"></i>
+      <h4>Productor-consumidor</h4>
+      <p>Buffer circular con 3 semáforos: <code>vacios</code>, <code>llenos</code>, <code>mutex</code>.</p>
+    </div>
+  </div>
+  <div style="margin-top:20px; text-align:center;">
+    <button class="btn-quiz" onclick="quizBloque3()"><i class="fa-solid fa-play"></i> Repasar bloque 3</button>
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 5 · BLOQUE 4: MEMORIA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">bloque 4 · clase 7</div>
+  <h1 class="title"><span class="accent">Gestión de Memoria</span></h1>
+  <div class="grid-cards">
+    <div class="card-min" style="border-color:#8a3f26;">
+      <span class="unit-tag" style="color:#ff7d59;">U5</span>
+      <i class="fa-solid fa-map" style="color:#ff7d59;"></i>
+      <h4>Mapa de memoria</h4>
+      <p>Todo lo que queda después del kernel cargado es el heap disponible.</p>
+    </div>
+    <div class="card-min" style="border-color:#8a3f26;">
+      <span class="unit-tag" style="color:#ff7d59;">U5</span>
+      <i class="fa-solid fa-arrow-right" style="color:#ff7d59;"></i>
+      <h4>Bump allocator</h4>
+      <p><code>kmalloc()</code> simplemente avanza un puntero — nunca libera.</p>
+    </div>
+    <div class="card-min" style="border-color:#8a3f26;">
+      <span class="unit-tag" style="color:#ff7d59;">U5</span>
+      <i class="fa-solid fa-list" style="color:#ff7d59;"></i>
+      <h4>Free-list</h4>
+      <p>Cada bloque guarda tamaño + flag libre/ocupado — <code>kfree()</code> lo marca reutilizable.</p>
+    </div>
+  </div>
+  <div style="margin-top:20px; text-align:center;">
+    <button class="btn-quiz" onclick="quizBloque4()"><i class="fa-solid fa-play"></i> Repasar bloque 4</button>
+  </div>
+</div>
+`);
+
+/* ---------- SLIDE 6 · SIMULACRO INTEGRADOR ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:5vh;">
+  <div class="eyebrow" style="justify-content:center;">simulacro integrador</div>
+  <h1 class="title"><i class="fa-solid fa-brain accent"></i> Todo junto, mezclado</h1>
+  <p class="subtitle">5 preguntas que combinan conceptos de varias clases — el tipo de mirada que va a pedir el parcial</p>
+  <button class="btn-quiz" onclick="quizIntegrador()"><i class="fa-solid fa-play"></i> Iniciar simulacro</button>
+</div>
+`);
+
+/* ---------- SLIDE 7 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin del repaso</div>
+  <h1 class="mega" style="font-size:2.6rem;">Teoría <span class="kernel">asentada</span>.<br>Seguimos construyendo.</h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">próxima clase</div>
+    <ul class="checklist">
+      <li>Archivos y un sistema de archivos mínimo sobre un "disco" simulado (Unidad 5, cont.)</li>
+      <li>Repasar los puntos donde el puntaje bajó más — esos son los que conviene reforzar</li>
+    </ul>
+  </div>
+  <div class="panel" style="margin-top:16px; max-width:640px; border-color:var(--gold);">
+    <div class="term-tag" style="border-color:var(--gold); color:var(--gold);">constancia de entrega</div>
+    <p style="margin:0 0 12px 0;">Generá tu código y enviámelo por el canal del curso para confirmar que completaste el repaso.</p>
+    <button class="btn-quiz" onclick="generarCodigoEntrega()"><i class="fa-solid fa-stamp"></i> Generar código de entrega</button>
+    <div id="codigo-entrega" style="margin-top:14px;"></div>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Checkpoint guardado — puntaje final visible arriba.</div>
+</div>
+`);
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+let score = 0;
+let totalAnswered = 0;
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+/* ============================================================
+   QUIZZES (SweetAlert2) — con puntaje acumulado
+   ============================================================ */
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#ffd166',
+  cancelButtonColor: '#6d7c8c',
+};
+
+function updateScoreBadge(){
+  document.getElementById('score-badge').textContent = `PUNTAJE: ${score} / ${totalAnswered}`;
+}
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  totalAnswered++;
+  if(correct) score++;
+  updateScoreBadge();
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizBloque1(){
+  await askMC('Bloque 1 — Virtualización', '¿Qué tipo de hipervisor es VirtualBox?', ['Tipo 1 (bare-metal)','Tipo 2 (hosted, corre sobre un SO anfitrión)','No es un hipervisor','Un emulador de red'], 1,
+    'VirtualBox es un hipervisor <b>Tipo 2</b>: corre sobre un sistema operativo anfitrión, a diferencia de los Tipo 1 que corren directo sobre el hardware.');
+  await askMC('Bloque 1 — Arranque', '¿Qué verifica la BIOS antes de ejecutar un sector de arranque?', ['Que tenga menos de 256 bytes','La firma mágica 0x55AA al final del sector','Que esté firmado digitalmente por Microsoft','Que el usuario tenga contraseña'], 1,
+    'La BIOS busca la firma <b>0x55AA</b> en los últimos 2 bytes del sector para confirmar que es un sector de arranque válido.');
+  await askMC('Bloque 1 — Seguridad', 'En el esquema AAA, ¿qué paso corresponde a "demostrar que sos quien decís ser"?', ['Identificación','Autenticación','Autorización','Auditoría'], 1,
+    'La <b>autenticación</b> es donde probás tu identidad (contraseña, biometría, 2FA).');
+  Swal.fire({...swalBase, icon:'info', title:'Bloque 1 repasado', html:`Puntaje acumulado: <b>${score} / ${totalAnswered}</b>`});
+}
+
+async function quizBloque2(){
+  await askMC('Bloque 2 — Bootloader', '¿En qué dirección de memoria carga la BIOS el sector de arranque?', ['0x0000','0x7c00','0xb8000','0xFFFF'], 1,
+    'La BIOS carga los primeros 512 bytes en <b>0x7c00</b> y salta ahí para ejecutar el bootloader.');
+  await askMC('Bloque 2 — Toolchain', '¿Qué herramienta ensambla el archivo boot.asm a binario?', ['GCC','NASM','QEMU','Make'], 1,
+    '<b>NASM</b> es el ensamblador que convierte boot.asm en un binario plano ejecutable.');
+  await askMC('Bloque 2 — C freestanding', '¿Cuál de estas funciones SÍ está disponible en nuestro C mínimo para el kernel?', ['printf()','malloc()','structs y punteros','try/catch'], 2,
+    'Structs, punteros y funciones están disponibles. printf, malloc y las excepciones requieren librería estándar, que no tenemos.');
+  await askMC('Bloque 2 — Modo protegido', '¿Qué tabla es obligatoria antes de saltar a modo protegido?', ['Tabla de páginas','GDT (Global Descriptor Table)','Tabla de procesos','Tabla ASCII'], 1,
+    'La <b>GDT</b> define los segmentos de código y datos — es un requisito del procesador antes de activar el modo protegido.');
+  Swal.fire({...swalBase, icon:'info', title:'Bloque 2 repasado', html:`Puntaje acumulado: <b>${score} / ${totalAnswered}</b>`});
+}
+
+async function quizBloque3(){
+  await askMC('Bloque 3 — Estados', '¿A qué estado pasa un proceso CORRIENDO que espera una E/S?', ['TERMINADO','BLOQUEADO','NUEVO','LISTO'], 1,
+    'Pasa a <b>BLOQUEADO</b> hasta que la operación de E/S se complete.');
+  await askMC('Bloque 3 — Scheduler', '¿Qué tipo de multitarea implementamos en la Clase 5?', ['Preventiva con temporizador','Cooperativa: el proceso cede la CPU voluntariamente','No hay multitarea','Multitarea distribuida'], 1,
+    'Es <b>cooperativa</b>: sin temporizador, dependemos de que cada proceso llame a <code>proceso_yield()</code>.');
+  await askMC('Bloque 3 — Semáforos', '¿Con qué valor inicial se usa un semáforo binario como mutex?', ['0','1','-1','100'], 1,
+    'Se inicializa en <b>1</b>: el primer proceso que llega entra, y bloquea a los demás hasta liberarlo.');
+  await askMC('Bloque 3 — Productor-consumidor', '¿Para qué sirve el semáforo "llenos" en el problema productor-consumidor?', ['Contar espacios libres','Contar datos disponibles para consumir','Proteger el buffer','Contar procesos activos'], 1,
+    'El semáforo <b>llenos</b> cuenta cuántos datos hay disponibles para que el consumidor los retire.');
+  Swal.fire({...swalBase, icon:'info', title:'Bloque 3 repasado', html:`Puntaje acumulado: <b>${score} / ${totalAnswered}</b>`});
+}
+
+async function quizBloque4(){
+  await askMC('Bloque 4 — Memoria', '¿Qué hace un bump allocator al pedirle memoria?', ['Busca un bloque libre para reutilizar','Avanza un puntero y devuelve la posición anterior','Pregunta al usuario','Reinicia el kernel'], 1,
+    'Simplemente <b>avanza</b> el puntero del heap — no reutiliza nada, por eso nunca libera memoria.');
+  await askMC('Bloque 4 — Free-list', '¿Qué guarda el encabezado de cada bloque en la free-list?', ['El nombre del proceso','Su tamaño y si está libre u ocupado','La hora de creación','Nada, es solo el dato'], 1,
+    'Cada <code>bloque_t</code> guarda su <b>tamaño</b> y una bandera <b>libre/ocupado</b>.');
+  await askMC('Bloque 4 — Extensión propuesta', '¿Qué primitiva de la Clase 6 protegería kmalloc/kfree entre procesos?', ['Un semáforo','Una tabla de páginas','Un socket','Un archivo de log'], 0,
+    'Un <b>semáforo</b> evitaría condiciones de carrera si dos procesos llaman a kmalloc/kfree simultáneamente.');
+  Swal.fire({...swalBase, icon:'info', title:'Bloque 4 repasado', html:`Puntaje acumulado: <b>${score} / ${totalAnswered}</b>`});
+}
+
+async function quizIntegrador(){
+  await askMC('Mezclando conceptos', '¿Qué tienen en común el salto a modo protegido y el cambio de contexto entre procesos?', ['Nada, son temas sin relación','Ambos implican cambiar qué código ejecuta la CPU y con qué configuración','Ambos requieren reiniciar la VM','Ambos usan malloc()'], 1,
+    'Los dos son transiciones de ejecución: el modo protegido cambia el "modo" de la CPU; el cambio de contexto cambia qué <i>proceso</i> corre, ambos redirigiendo el flujo de ejecución.');
+  await askMC('Mezclando conceptos', 'Si el kernel usa kmalloc() dentro de una sección crítica protegida por un semáforo, ¿qué estás combinando?', ['Bootloader + GDT','Gestión de memoria + sincronización','Virtualización + seguridad','DNS + Kerberos'], 1,
+    'Estás combinando la <b>Clase 7</b> (memoria) con la <b>Clase 6</b> (sincronización) — exactamente la extensión propuesta al final de la Clase 7.');
+  await askMC('Mezclando conceptos', '¿Qué pasaría si el scheduler cambiara de proceso justo en medio de un kmalloc() sin protección?', ['Nada, kmalloc es siempre seguro','Podría corromperse la free-list si dos procesos la modifican a la vez','El kernel se apagaría automáticamente','Se liberaría memoria de más'], 1,
+    'Sin protección, es una <b>condición de carrera</b> clásica: dos procesos modificando la misma estructura (la free-list) sin exclusión mutua.');
+  await askMC('Mezclando conceptos', '¿En qué se parecen la GDT (Clase 4) y el PCB (Clase 5)?', ['En nada','Ambas son estructuras de datos que la CPU o el kernel consultan para saber cómo tratar algo (un segmento o un proceso)','Ambas contienen contraseñas','Ambas son parte de VirtualBox'], 1,
+    'Ambas son "tablas de consulta": la GDT le dice a la CPU cómo son los segmentos de memoria; el PCB le dice al kernel todo sobre un proceso.');
+  await askMC('Mezclando conceptos', 'Si tuvieras que ordenar cronológicamente estos eventos al arrancar tu kernel, ¿cuál va primero?', ['kmain() escribe en pantalla','La BIOS carga el sector de arranque en 0x7c00','El scheduler cambia de proceso','sem_wait() protege un contador'], 1,
+    'El orden real es: BIOS carga 0x7c00 → salto a modo protegido → kmain() → creación de procesos → scheduler → sincronización.');
+  Swal.fire({...swalBase, icon:'success', title:'¡Simulacro completo!', html:`Puntaje final: <b>${score} / ${totalAnswered}</b><br>${score/totalAnswered >= 0.8 ? '¡Excelente dominio del proyecto!' : 'Repasá los bloques donde fallaste antes de la próxima clase.'}`});
+}
+
+async function generarCodigoEntrega(){
+  const { value: nombre } = await Swal.fire({
+    ...swalBase,
+    title: 'Tu nombre',
+    input: 'text',
+    inputPlaceholder: 'Nombre y apellido',
+    inputValidator: (v)=> !v && 'Ingresá tu nombre para generar el código',
+    confirmButtonText: 'Generar código',
+  });
+  if(!nombre) return;
+
+  if(totalAnswered === 0){
+    Swal.fire({...swalBase, icon:'warning', title:'Todavía no respondiste nada', text:'Completá al menos un bloque de repaso antes de generar el código.'});
+    return;
+  }
+
+  const fecha = new Date();
+  const fechaStr = `${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
+  const iniciales = nombre.trim().split(/\s+/).map(p=>p[0].toUpperCase()).join('').slice(0,4);
+  const codigo = `SO-REPASO-${fechaStr}-${iniciales}-${score}${totalAnswered}`;
+
+  document.getElementById('codigo-entrega').innerHTML = `
+    <div class="code-block" style="text-align:center; font-size:1rem;">
+      ${codigo}
+    </div>
+    <p style="color:var(--text-dim); font-size:.8rem; margin-top:8px;">
+      Copiá este código y enviámelo por el canal del curso junto con tu nombre.
+    </p>
+  `;
+}
+</script>
+</body>
+</html>

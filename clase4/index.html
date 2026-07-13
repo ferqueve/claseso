@@ -351,6 +351,15 @@ gdt_data:                     <span class="c-dim">; segmento de datos, 0-4GB</sp
     dw 0xffff, 0
     db 0, 10010010b, 11001111b, 0
 gdt_end:
+
+<span class="c-dim">; el descriptor que "lgdt" necesita: tamaño (16 bits) + dirección (32 bits)</span>
+gdt_descriptor:
+    dw gdt_end - gdt_start - 1
+    dd gdt_start
+
+<span class="c-dim">; offsets de cada segmento dentro de la GDT (los usamos como selectores)</span>
+CODE_SEG equ gdt_code - gdt_start
+DATA_SEG equ gdt_data - gdt_start
   </div>
 </div>
 `, {module:2, mtype:'practica', clock:'19:45 – 21:00'});

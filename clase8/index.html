@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 8 — Archivos &amp; Sistema de Archivos</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --cyan:#5ccfe6;
+  --sand:#d4a373;
+  --sand-dim:#7a5a3a;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(212,163,115,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--sand); color:#211505; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--sand); box-shadow:0 0 6px var(--sand); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--sand-dim), var(--sand)); box-shadow:0 0 8px var(--sand); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--sand); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--sand); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(212,163,115,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#7a6a4a; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3.4rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--sand); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:18px; transition:transform .2s, border-color .2s; }
+.card-min:hover{ transform:translateY(-3px); border-color:var(--sand-dim); }
+.card-min i{ color:var(--cyan); font-size:1.3rem; margin-bottom:8px; display:block; }
+.card-min h4{ font-size:1rem; margin-bottom:4px; }
+.card-min p{ font-size:.85rem; color:var(--text-dim); margin:0; }
+
+/* disk map */
+.diskmap{ display:grid; grid-template-columns:repeat(8, 1fr); gap:4px; }
+.diskmap div{ height:34px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:.65rem; color:#04120a; }
+
+table.cmp{ width:100%; border-collapse:collapse; font-size:.9rem; }
+table.cmp th{ font-family:var(--mono); text-transform:uppercase; font-size:.72rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.cmp td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.8rem; color:var(--cyan); overflow-x:auto; white-space:pre;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-sand{ color:var(--sand); }
+.code-block .c-red{ color:var(--red); }
+
+.btn-quiz{
+  background:transparent; border:1px solid var(--sand-dim); color:var(--sand);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s;
+}
+.btn-quiz:hover{ background:var(--sand); color:#211505; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--sand); border-color:var(--sand-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--sand); box-shadow:0 0 6px var(--sand); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--sand) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:1.8rem; }
+  h1.title{ font-size:1.5rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .mod-num{ display:none; }
+  .diskmap{ grid-template-columns:repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-regular fa-clock"></i> <span id="clockLabel">18:15 – 19:35</span></div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria', clock: opts.clock || ''});
+}
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Retomando sesión ...................... clase_08.iso</div>
+    <div>[ <span class="ok">OK</span> ] Montando disco simulado ............... disco_ram[512][512]</div>
+    <div>[ <span class="ok">OK</span> ] Cargando tabla de inodos</div>
+  </div>
+  <div class="eyebrow">boot sequence · clase 08</div>
+  <h1 class="mega">Archivos <span class="kernel">&amp;</span><br>Sistema de Archivos</h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Unidad 5 (cont.): guardar datos que sobrevivan al reinicio del proceso</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 1 · REPASO + AGENDA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">repaso + agenda</div>
+  <h1 class="title">Memoria dinámica lista... ¿y los <span class="accent">datos persistentes</span>?</h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>Tu kernel ya reserva y libera memoria con kmalloc/kfree.</li>
+      <li>Pero toda esa memoria se pierde al reiniciar la VM. Hoy: datos que "sobreviven".</li>
+    </ul>
+  </div>
+  <div class="grid-cards" style="margin-top:18px;">
+    <div class="card-min">
+      <i class="fa-solid fa-folder-open"></i>
+      <h4 class="accent-cyan">Módulo 1 · 18:15–19:35</h4>
+      <p>Qué es un archivo, operaciones fundamentales, estructuras de disco e inodos. <b>Teoría.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-hard-drive"></i>
+      <h4 class="accent-amber">Módulo 2 · 19:45–21:00</h4>
+      <p>Diseñar un "disco" simulado en RAM y su tabla de inodos en C. <b>Práctica.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-file-pen"></i>
+      <h4 class="accent-amber">Módulo 3 · 21:05–22:30</h4>
+      <p>Implementar crear/escribir/leer archivos sobre ese disco. <b>Práctica + quiz.</b></p>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 2 · QUE ES UN ARCHIVO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">introducción a los sistemas de archivos</div>
+  <h1 class="title">¿Qué es, en el fondo, un <span class="accent">archivo</span>?</h1>
+  <div class="panel">
+    <p style="font-size:1.05rem; line-height:1.7;">
+      Para el hardware, un disco es solo una secuencia enorme de bloques numerados. Un <b>archivo</b> es una
+      abstracción que el sistema operativo construye encima: un nombre, un tamaño, y la lista de qué bloques
+      del disco le pertenecen.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-plus"></i><h4>Crear</h4><p>Reservar un nombre y espacio</p></div>
+    <div class="card-min"><i class="fa-solid fa-pen"></i><h4>Escribir</h4><p>Volcar datos en sus bloques</p></div>
+    <div class="card-min"><i class="fa-solid fa-eye"></i><h4>Leer</h4><p>Recuperar esos datos</p></div>
+    <div class="card-min"><i class="fa-solid fa-trash"></i><h4>Borrar</h4><p>Liberar sus bloques para reutilizar</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 3 · ESTRUCTURAS DE DISCO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">dispositivos de almacenamiento secundario</div>
+  <h1 class="title">HDD, SSD y el <span class="accent">MBR</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">HDD vs. SSD</div>
+        <p>Un HDD organiza los datos en pistas y sectores sobre un disco magnético giratorio. Un SSD no tiene partes móviles — usa celdas de memoria flash, mucho más rápidas para acceso aleatorio.</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">MBR (Master Boot Record)</div>
+        <p>El primer sector del disco (¡el mismo <code>0x7c00</code> que vimos en la Clase 3!): guarda la tabla de particiones y, en discos "legacy", el código de arranque.</p>
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 4 · INODOS Y DIRECTORIOS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">organización lógica</div>
+  <h1 class="title">Inodos: la <span class="accent">"ficha"</span> de cada archivo</h1>
+  <div class="panel">
+    <p>Un <b>nodo-i (inodo)</b> guarda los metadatos de un archivo — tamaño, permisos, y qué bloques de disco le pertenecen — pero <b>no su nombre</b>. El nombre vive en el <b>directorio</b>, que es en sí mismo un archivo especial: una lista de pares (nombre → número de inodo).</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-id-card"></i><h4>Inodo</h4><p>Metadatos + bloques de datos</p></div>
+    <div class="card-min"><i class="fa-solid fa-folder"></i><h4>Directorio</h4><p>Tabla de nombre → número de inodo</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 5 · RAID Y RESPALDOS (breve) ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">un vistazo rápido</div>
+  <h1 class="title">RAID y <span class="accent">respaldos</span></h1>
+  <div class="panel">
+    <p><b>RAID</b> combina varios discos físicos para ganar velocidad, redundancia, o ambas (ej. RAID 1 duplica los datos en 2 discos; RAID 0 los reparte para más velocidad, sin redundancia). Los respaldos periódicos son la defensa final cuando todo lo demás falla.</p>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">alcance de hoy</div>
+    <p style="margin:0;">No vamos a implementar RAID en el kernel de juguete — queda mencionado como parte del panorama general de almacenamiento.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 6 · QUIZ MODULO 1 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-folder-tree accent"></i> Antes de simular el disco...</h1>
+  <p class="subtitle">Repasemos inodos, directorios y MBR</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+/* ---------- SLIDE 7 · TRANSICIÓN MÓDULO 2 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">Simular un <span class="kernel" style="color:var(--amber);">disco</span><br>en RAM</h1>
+  <h2 class="subtitle">Todavía no tenemos driver de disco real — eso es la Unidad 6</h2>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 8 · POR QUE UN DISCO SIMULADO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">honestidad técnica</div>
+  <h1 class="title">Un disco de <span class="accent-amber">mentira</span>, por ahora</h1>
+  <div class="panel">
+    <p>Hablar con un disco real requiere un <b>driver</b> (controlador ATA/IDE) que todavía no vimos — eso llega en la Unidad 6 (Entrada/Salida). Mientras tanto, simulamos el disco con un simple arreglo en memoria: un <b>RAM disk</b>. La lógica del sistema de archivos que construyamos hoy no cambia cuando más adelante lo conectemos a un disco de verdad.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// disco.c</span>
+<span class="c-amber">#define</span> TAM_BLOQUE 512
+<span class="c-amber">#define</span> NUM_BLOQUES 256
+
+<span class="c-sand">unsigned char</span> disco_ram[NUM_BLOQUES][TAM_BLOQUE];
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 9 · MAPA DEL DISCO SIMULADO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">organización del disco simulado</div>
+  <h1 class="title">Superbloque, <span class="accent-amber">bitmap</span> e inodos</h1>
+  <div class="panel">
+    <div class="diskmap">
+      <div style="background:var(--red);">Super-bloque</div>
+      <div style="background:var(--amber);">Bitmap</div>
+      <div style="background:var(--cyan);">Inodo 0</div>
+      <div style="background:var(--cyan);">Inodo 1</div>
+      <div style="background:var(--cyan);">Inodo 2</div>
+      <div style="background:var(--sand);">Datos</div>
+      <div style="background:var(--sand);">Datos</div>
+      <div style="background:var(--sand);">Datos</div>
+    </div>
+    <p style="color:var(--text-dim); font-family:var(--mono); font-size:.75rem; margin-top:10px;">
+      bloque 0 ─────────────────────────────────────────────── bloque 255
+    </p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">roles</div>
+    <ul class="checklist">
+      <li><b>Super-bloque:</b> metadatos globales — cuántos inodos y bloques hay, cuántos están libres</li>
+      <li><b>Bitmap:</b> un bit por bloque, marca si está libre u ocupado</li>
+      <li><b>Tabla de inodos:</b> los metadatos de cada archivo</li>
+      <li><b>Datos:</b> el contenido real de los archivos</li>
+    </ul>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 10 · STRUCT INODO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · inodo.h</div>
+  <h1 class="title">El <span class="accent-amber">inodo</span> en C</h1>
+  <div class="code-block">
+<span class="c-dim">// inodo.h</span>
+<span class="c-amber">#define</span> MAX_ARCHIVOS 16
+<span class="c-amber">#define</span> BLOQUES_POR_ARCHIVO 4
+
+<span class="c-sand">typedef struct</span> {
+    <span class="c-sand">char</span> nombre[<span class="c-amber">32</span>];
+    <span class="c-sand">int</span> ocupado;              <span class="c-dim">// 0 = libre, 1 = en uso</span>
+    <span class="c-sand">unsigned int</span> tamano;      <span class="c-dim">// bytes usados</span>
+    <span class="c-sand">int</span> bloques[BLOQUES_POR_ARCHIVO]; <span class="c-dim">// índices en disco_ram</span>
+} inodo_t;
+
+inodo_t tabla_inodos[MAX_ARCHIVOS];
+<span class="c-sand">int</span> bitmap_bloques[NUM_BLOQUES]; <span class="c-dim">// 0 = libre, 1 = ocupado</span>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 11 · QUIZ MODULO 2 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-hard-drive accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Sobre el disco simulado y el inodo</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 12 · TRANSICIÓN MÓDULO 3 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">Crear, escribir<br>y <span class="kernel">leer archivos</span></h1>
+  <h2 class="subtitle">Las 3 operaciones que le dan vida al sistema de archivos</h2>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 13 · FS_CREAR ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · fs.c</div>
+  <h1 class="title"><span class="accent">fs_crear()</span></h1>
+  <div class="code-block">
+<span class="c-dim">// fs.c</span>
+<span class="c-sand">int</span> buscar_bloque_libre(<span class="c-sand">void</span>) {
+    <span class="c-sand">for</span> (<span class="c-sand">int</span> i = <span class="c-amber">0</span>; i < NUM_BLOQUES; i++) {
+        <span class="c-sand">if</span> (bitmap_bloques[i] == <span class="c-amber">0</span>) <span class="c-sand">return</span> i;
+    }
+    <span class="c-sand">return</span> -<span class="c-amber">1</span>;  <span class="c-dim">// disco lleno</span>
+}
+
+<span class="c-sand">int</span> fs_crear(<span class="c-sand">char</span> *nombre) {
+    <span class="c-sand">for</span> (<span class="c-sand">int</span> i = <span class="c-amber">0</span>; i < MAX_ARCHIVOS; i++) {
+        <span class="c-sand">if</span> (!tabla_inodos[i].ocupado) {
+            <span class="c-dim">// copiar el nombre carácter por carácter (no hay strcpy)</span>
+            <span class="c-sand">int</span> j = <span class="c-amber">0</span>;
+            <span class="c-sand">while</span> (nombre[j] != <span class="c-amber">0</span> && j < <span class="c-amber">31</span>) {
+                tabla_inodos[i].nombre[j] = nombre[j];
+                j++;
+            }
+            tabla_inodos[i].nombre[j] = <span class="c-amber">0</span>;
+            tabla_inodos[i].ocupado = <span class="c-amber">1</span>;
+            tabla_inodos[i].tamano = <span class="c-amber">0</span>;
+            <span class="c-sand">return</span> i;  <span class="c-dim">// número de inodo asignado</span>
+        }
+    }
+    <span class="c-sand">return</span> -<span class="c-amber">1</span>;  <span class="c-dim">// no hay inodos libres</span>
+}
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 14 · FS_ESCRIBIR Y FS_LEER ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · fs.c (cont.)</div>
+  <h1 class="title"><span class="accent">fs_escribir()</span> y <span class="accent">fs_leer()</span></h1>
+  <div class="code-block">
+<span class="c-sand">int</span> fs_escribir(<span class="c-sand">int</span> inodo, <span class="c-sand">unsigned char</span> *datos, <span class="c-sand">unsigned int</span> tamano) {
+    <span class="c-sand">int</span> bloque = buscar_bloque_libre();
+    <span class="c-sand">if</span> (bloque == -<span class="c-amber">1</span>) <span class="c-sand">return</span> -<span class="c-amber">1</span>;  <span class="c-dim">// sin espacio</span>
+
+    <span class="c-sand">for</span> (<span class="c-sand">unsigned int</span> i = <span class="c-amber">0</span>; i < tamano && i < TAM_BLOQUE; i++) {
+        disco_ram[bloque][i] = datos[i];
+    }
+
+    bitmap_bloques[bloque] = <span class="c-amber">1</span>;
+    tabla_inodos[inodo].bloques[<span class="c-amber">0</span>] = bloque;
+    tabla_inodos[inodo].tamano = tamano;
+    <span class="c-sand">return</span> <span class="c-amber">0</span>;
+}
+
+<span class="c-sand">int</span> fs_leer(<span class="c-sand">int</span> inodo, <span class="c-sand">unsigned char</span> *destino) {
+    <span class="c-sand">int</span> bloque = tabla_inodos[inodo].bloques[<span class="c-amber">0</span>];
+    <span class="c-sand">unsigned int</span> tamano = tabla_inodos[inodo].tamano;
+
+    <span class="c-sand">for</span> (<span class="c-sand">unsigned int</span> i = <span class="c-amber">0</span>; i < tamano; i++) {
+        destino[i] = disco_ram[bloque][i];
+    }
+    <span class="c-sand">return</span> tamano;
+}
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 15 · LIMITACIONES Y EXTENSIONES ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">honestidad técnica</div>
+  <h1 class="title">Lo que este mini-FS <span class="accent">no resuelve</span> (todavía)</h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>Cada archivo usa un solo bloque (512 bytes máximo) — un FS real encadena varios bloques</li>
+      <li>No hay directorios anidados, solo una lista plana de archivos</li>
+      <li>No persiste entre reinicios — es RAM, se pierde al apagar la VM (¡para eso hace falta un disco real, Unidad 6!)</li>
+    </ul>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">para el obligatorio</div>
+    <p style="margin:0;">Extensión sugerida: usar los <code>BLOQUES_POR_ARCHIVO</code> del inodo para permitir archivos más grandes que un solo bloque.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 16 · QUIZ FINAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase 08</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre de la clase</h1>
+  <p class="subtitle">Últimas preguntas antes de irnos</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 17 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:2.6rem;">Tu kernel ya<br><span class="kernel">guarda archivos</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">para la próxima</div>
+    <ul class="checklist">
+      <li>Repasar el rol del inodo, el bitmap y el super-bloque</li>
+      <li>Probar crear 2-3 archivos y leer su contenido de vuelta</li>
+      <li>Seguimos con: interbloqueos (deadlocks) — el lado oscuro de compartir recursos</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada — apagando terminal...</div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  document.getElementById('clockLabel').textContent = s.clock;
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+/* ============================================================
+   QUIZZES (SweetAlert2)
+   ============================================================ */
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#d4a373',
+  cancelButtonColor: '#6d7c8c',
+};
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Inodos',
+    '¿Qué información NO guarda un inodo?',
+    ['El tamaño del archivo','Los bloques de disco que le pertenecen','El nombre del archivo','Sus permisos'], 2,
+    'El <b>nombre</b> del archivo vive en el directorio, no en el inodo. El inodo guarda metadatos como tamaño, permisos y bloques asignados.'
+  );
+  await askMC(
+    'MBR',
+    '¿Qué guarda el MBR (Master Boot Record)?',
+    ['La tabla de particiones y, en discos legacy, código de arranque','Los inodos de todos los archivos','El bitmap de bloques libres','La contraseña del administrador'], 0,
+    'El <b>MBR</b> es el primer sector del disco: guarda la tabla de particiones y el código de arranque en esquemas legacy.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora sí, a simular el disco.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'Disco simulado',
+    '¿Por qué simulamos el disco con un arreglo en RAM en vez de usar un disco real?',
+    ['Porque C no puede acceder a discos','Porque todavía no vimos cómo escribir un driver de disco real (eso es la Unidad 6)','Porque los discos reales son muy caros','Porque QEMU no soporta discos'], 1,
+    'Hablar con un disco real requiere un <b>driver</b> — contenido de la Unidad 6 (E/S). Por ahora simulamos con RAM.'
+  );
+  await askMC(
+    'Bitmap de bloques',
+    '¿Para qué sirve el bitmap_bloques en nuestro disco simulado?',
+    ['Para guardar contraseñas','Para marcar qué bloques están libres u ocupados','Para acelerar la CPU','Para contar procesos'], 1,
+    'El <b>bitmap</b> tiene un bit (o entero, en nuestra versión simplificada) por bloque, indicando si está libre u ocupado.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, crear/escribir/leer archivos de verdad.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'fs_crear()',
+    '¿Qué devuelve fs_crear() cuando tiene éxito?',
+    ['El contenido del archivo','El número de inodo asignado','Un puntero a disco_ram','Nada, es una función void'], 1,
+    'Devuelve el <b>número de inodo</b> asignado — ese número se usa después para escribir y leer el archivo.'
+  );
+  await askMC(
+    'Limitaciones actuales',
+    '¿Qué pasa con los datos de nuestro mini-FS al reiniciar la VM?',
+    ['Se guardan automáticamente en el disco físico','Se pierden — vive en RAM, no hay persistencia real todavía','Se envían por red a un servidor','Nada, siguen ahí para siempre'], 1,
+    'Como es un <b>RAM disk</b>, todo se pierde al apagar — la persistencia real requiere un driver de disco (Unidad 6).'
+  );
+  await askMC(
+    'Extensión propuesta',
+    '¿Qué campo del inodo permitiría archivos más grandes que un solo bloque, si lo aprovecháramos?',
+    ['nombre[32]','ocupado','bloques[BLOQUES_POR_ARCHIVO]','tamano'], 2,
+    'El arreglo <code>bloques[BLOQUES_POR_ARCHIVO]</code> ya está pensado para encadenar varios bloques — hoy solo usamos el primero.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase 8 completa!', text:'Nos vemos en la próxima sesión — interbloqueos.'});
+}
+</script>
+</body>
+</html>

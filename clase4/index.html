@@ -368,9 +368,18 @@ DATA_SEG equ gdt_data - gdt_start
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
   <div class="eyebrow">el salto</div>
-  <h1 class="title">Activar el bit y <span class="accent-amber">saltar</span></h1>
-  <div class="code-block">
-<span class="c-dim">; dentro de boot.asm, después de cargar la GDT</span>
+  <h1 class="title">Primero cargar el kernel, <span class="accent-amber">después saltar</span></h1>
+  <div class="panel">
+    <p>Ojo con el orden: las interrupciones de BIOS (como leer el disco) solo funcionan en <b>modo real</b>. Por eso, todavía en modo real, primero copiamos nuestro <code>kernel.bin</code> del disco a memoria — recién después activamos el modo protegido.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">; dentro de boot.asm — TODAVÍA en modo real</span>
+mov bx, KERNEL_OFFSET        <span class="c-dim">; ej. 0x1000 — dónde va a quedar el kernel</span>
+mov dh, 15                   <span class="c-dim">; cantidad de sectores a leer (ajustar al tamaño real)</span>
+mov dl, [BOOT_DRIVE]
+call leer_disco               <span class="c-dim">; usa int 0x13 — solo funciona en modo real</span>
+
+<span class="c-dim">; recién ahora activamos modo protegido</span>
 cli                          <span class="c-dim">; deshabilitar interrupciones</span>
 lgdt [gdt_descriptor]        <span class="c-dim">; cargar la GDT</span>
 
@@ -385,8 +394,34 @@ init_pm:
     mov ax, DATA_SEG
     mov ds, ax
     mov ss, ax
-    <span class="c-dim">; ya estamos en modo protegido de 32 bits</span>
+    <span class="c-dim">; el kernel ya está en memoria desde el paso anterior</span>
     call KERNEL_OFFSET        <span class="c-dim">; saltamos a nuestro kernel en C</span>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 8B · LINKER SCRIPT ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">la pieza que faltaba: linker.ld</div>
+  <h1 class="title">Decirle al linker <span class="accent-amber">dónde vive</span> el kernel</h1>
+  <div class="panel">
+    <p>El linker necesita un script propio para dos cosas: ubicar el código exactamente en <code>KERNEL_OFFSET</code> (la misma dirección adonde lo cargamos desde el disco), y definir el símbolo <code>_kernel_end</code> que después usa <code>kmalloc()</code> (Clase 7) para saber dónde empieza la memoria libre.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">/* linker.ld */</span>
+ENTRY(_start)
+SECTIONS
+{
+    <span class="c-dim">/* debe coincidir con KERNEL_OFFSET usado en boot.asm */</span>
+    . = <span class="c-amber">0x1000</span>;
+
+    .text : { *(.text) }
+    .data : { *(.data) }
+    .bss  : { *(.bss)  }
+
+    _kernel_end = .;   <span class="c-dim">// acá empieza la memoria libre para kmalloc()</span>
+}
   </div>
 </div>
 `, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
@@ -441,26 +476,54 @@ addSlide(`
 </div>
 `, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
 
+/* ---------- SLIDE 11B · KERNEL ENTRY STUB ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · kernel_entry.asm</div>
+  <h1 class="title">El primer <span class="accent">byte</span> del kernel</h1>
+  <div class="panel">
+    <p><code>kernel.bin</code> tiene que empezar con algo — un pequeño "stub" en ensamblador de 32 bits que sea lo primero que se ejecute al llegar a <code>KERNEL_OFFSET</code>, y que simplemente llame a nuestra función <code>kmain()</code> escrita en C.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">; kernel_entry.asm</span>
+[bits 32]
+global _start
+extern kmain
+
+_start:
+    call kmain
+    jmp $          <span class="c-dim">; por si kmain() alguna vez retorna</span>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
 /* ---------- SLIDE 12 · COMPILAR Y LINKEAR ---------- */
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
-  <div class="eyebrow">de C a binario</div>
-  <h1 class="title">Compilar <span class="accent">sin librería estándar</span></h1>
+  <div class="eyebrow">de C a binario · proceso completo</div>
+  <h1 class="title">Los <span class="accent">5 pasos</span> hasta la imagen final</h1>
   <div class="code-block">
-<span class="c-dim"># compilar kernel.c en modo freestanding, sin libc</span>
+<span class="c-dim"># 1. ensamblar el bootloader (real mode) como binario plano</span>
+<span class="c-green">$</span> nasm -f bin boot.asm -o boot.bin
+
+<span class="c-dim"># 2. ensamblar el stub de entrada de 32 bits como objeto ELF</span>
+<span class="c-green">$</span> nasm -f elf32 kernel_entry.asm -o kernel_entry.o
+
+<span class="c-dim"># 3. compilar kernel.c en modo freestanding, sin libc</span>
 <span class="c-green">$</span> gcc -m32 -ffreestanding -fno-stack-protector \\
     -nostdlib -c kernel.c -o kernel.o
 
-<span class="c-dim"># ensamblar el stub de arranque en modo protegido</span>
-<span class="c-green">$</span> nasm -f elf32 boot.asm -o boot.o
+<span class="c-dim"># 4. linkear el stub + kernel.c, y convertir a binario plano</span>
+<span class="c-green">$</span> ld -m elf_i386 -T linker.ld -o kernel.elf \\
+    kernel_entry.o kernel.o
+<span class="c-green">$</span> objcopy -O binary kernel.elf kernel.bin
 
-<span class="c-dim"># linkear todo con un linker script propio</span>
-<span class="c-green">$</span> ld -m elf_i386 -T linker.ld -o kernel.bin \\
-    boot.o kernel.o
+<span class="c-dim"># 5. concatenar bootloader + kernel en una sola imagen de disco</span>
+<span class="c-green">$</span> cat boot.bin kernel.bin > os-image.bin
   </div>
   <div class="panel" style="margin-top:16px;">
-    <div class="term-tag">flags clave</div>
-    <p style="margin:0;"><code>-ffreestanding</code> le dice a GCC que no asuma un SO debajo. <code>-nostdlib</code> evita enlazar la librería estándar de C, que no existe en nuestro kernel.</p>
+    <div class="term-tag">por qué objcopy</div>
+    <p style="margin:0;"><code>ld</code> produce un ejecutable <b>ELF</b> (con encabezados y metadatos). La BIOS no entiende ELF — solo código plano. <code>objcopy -O binary</code> extrae el código puro, sin encabezados.</p>
   </div>
 </div>
 `, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
@@ -469,21 +532,35 @@ addSlide(`
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
   <div class="eyebrow">automatización</div>
-  <h1 class="title">El <span class="accent">Makefile</span> del proyecto, ahora con C</h1>
+  <h1 class="title">El <span class="accent">Makefile</span> del proyecto, ahora completo</h1>
   <div class="code-block">
-<span class="c-blue">all:</span> kernel.bin
+<span class="c-blue">all:</span> os-image.bin
 
-<span class="c-blue">boot.o:</span> boot.asm
-	nasm -f elf32 boot.asm -o boot.o
+<span class="c-blue">boot.bin:</span> boot.asm
+	nasm -f bin boot.asm -o boot.bin
+
+<span class="c-blue">kernel_entry.o:</span> kernel_entry.asm
+	nasm -f elf32 kernel_entry.asm -o kernel_entry.o
 
 <span class="c-blue">kernel.o:</span> kernel.c
 	gcc -m32 -ffreestanding -fno-stack-protector -nostdlib -c kernel.c -o kernel.o
 
-<span class="c-blue">kernel.bin:</span> boot.o kernel.o linker.ld
-	ld -m elf_i386 -T linker.ld -o kernel.bin boot.o kernel.o
+<span class="c-blue">kernel.bin:</span> kernel_entry.o kernel.o linker.ld
+	ld -m elf_i386 -T linker.ld -o kernel.elf kernel_entry.o kernel.o
+	objcopy -O binary kernel.elf kernel.bin
 
-<span class="c-blue">run:</span> kernel.bin
-	qemu-system-i386 -kernel kernel.bin
+<span class="c-blue">os-image.bin:</span> boot.bin kernel.bin
+	cat boot.bin kernel.bin > os-image.bin
+
+<span class="c-blue">run:</span> os-image.bin
+	qemu-system-i386 -fda os-image.bin
+
+<span class="c-blue">clean:</span>
+	rm -f *.o *.bin *.elf
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">por qué no "-kernel"</div>
+    <p style="margin:0;"><code>qemu-system-i386 -kernel</code> está pensado para kernels <b>Multiboot</b> (los que carga GRUB), que arrancan directo en modo protegido. Nuestro bootloader casero hace su propio salto desde modo real, así que arranca como <b>disco</b> (<code>-fda</code>), no como "kernel".</p>
   </div>
 </div>
 `, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
@@ -506,8 +583,8 @@ addSlide(`
   <div class="panel" style="margin-top:20px; max-width:640px;">
     <div class="term-tag">para la próxima</div>
     <ul class="checklist">
-      <li>Confirmar que <code>kernel.bin</code> corre en QEMU y muestra el mensaje</li>
-      <li>Repasar: modo real → GDT → modo protegido → kmain()</li>
+      <li>Confirmar que <code>os-image.bin</code> corre en QEMU (<code>-fda</code>) y muestra el mensaje</li>
+      <li>Repasar: modo real → leer kernel del disco → GDT → modo protegido → kmain()</li>
       <li>Seguimos con procesos: cómo representar y planificar tareas simples</li>
     </ul>
   </div>
@@ -619,6 +696,12 @@ async function quizModulo1(){
 
 async function quizModulo2(){
   await askMC(
+    'Orden de operaciones',
+    '¿Por qué hay que leer el kernel del disco ANTES de activar el modo protegido?',
+    ['Por estética del código','Porque las interrupciones de BIOS (int 0x13) solo funcionan en modo real','Porque el disco se rompe en modo protegido','No importa el orden'], 1,
+    'Las interrupciones de BIOS, incluida la de lectura de disco, solo están disponibles en <b>modo real</b>. Una vez en modo protegido, ya no podemos usarlas.'
+  );
+  await askMC(
     'GDT',
     '¿Para qué sirve la Tabla Global de Descriptores (GDT)?',
     ['Para guardar contraseñas de usuario','Para definir los segmentos de memoria antes de entrar en modo protegido','Para acelerar el disco duro','Para configurar el teclado'], 1,
@@ -645,6 +728,18 @@ async function quizFinal(){
     '¿Qué flag le indica a GCC que no asuma que hay un sistema operativo debajo?',
     ['-O2','-ffreestanding','-Wall','-g'], 1,
     '<code>-ffreestanding</code> es la bandera clave: le dice al compilador que no puede asumir librería estándar ni entorno de SO.'
+  );
+  await askMC(
+    'De ELF a binario plano',
+    '¿Para qué usamos objcopy -O binary después de ld?',
+    ['Para comprimir el archivo','Para extraer el código plano, sin encabezados ELF, que la BIOS pueda entender','Para agregar símbolos de depuración','Para firmarlo digitalmente'], 1,
+    'La BIOS no entiende el formato ELF que produce <code>ld</code> — <code>objcopy -O binary</code> extrae el código puro.'
+  );
+  await askMC(
+    'Arrancar la imagen',
+    '¿Por qué corremos os-image.bin con -fda en vez de -kernel?',
+    ['Porque -kernel no existe en QEMU','Porque -kernel es para kernels Multiboot que ya arrancan en modo protegido, y el nuestro hace su propio salto desde modo real','Porque -fda es más rápido','No hay diferencia real'], 1,
+    'Nuestro bootloader casero controla su propio salto de modo real a protegido — por eso arranca como un <b>disco</b> (<code>-fda</code>), no como un kernel Multiboot.'
   );
   await askMC(
     'El bucle final',

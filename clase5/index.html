@@ -432,27 +432,137 @@ addSlide(`
 </div>
 `, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
 
+/* ---------- SLIDE 10B · TEORIA: QUE ES GUARDAR/RESTAURAR CONTEXTO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">antes del código: la idea</div>
+  <h1 class="title">¿Qué significa <span class="accent">"guardar" la ejecución</span> de un proceso?</h1>
+  <div class="panel">
+    <p style="font-size:1.02rem; line-height:1.7;">
+      Pensá en cada proceso como alguien leyendo su propio libro (su <b>pila</b>), con un separador de
+      páginas (el <b>stack pointer</b>, <code>esp</code>) que marca exactamente dónde se quedó: qué línea estaba
+      leyendo, qué anotaciones tenía a mano (sus variables locales), y a qué página tiene que volver
+      cuando termine el capítulo actual (su dirección de retorno).
+    </p>
+    <p style="font-size:1.02rem; line-height:1.7; margin-top:10px;">
+      "Cambiar de proceso" no es magia: es tan simple como <b>cerrar ese libro dejando el separador puesto</b>,
+      y abrir el libro del otro proceso <b>exactamente donde él dejó su propio separador</b>. La CPU no sabe
+      ni le importa qué proceso es cuál — simplemente sigue leyendo desde donde apunta <code>esp</code>.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-bookmark"></i><h4>El separador = ESP</h4><p>Apunta al tope de la pila de ESE proceso</p></div>
+    <div class="card-min"><i class="fa-solid fa-book"></i><h4>El libro = su pila</h4><p>Guarda variables locales y direcciones de retorno</p></div>
+    <div class="card-min"><i class="fa-solid fa-arrows-turn-to-dots"></i><h4>Cambiar de libro</h4><p>Guardar el ESP viejo, cargar el ESP nuevo</p></div>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 10C · POR QUE NO ALCANZA CON SOLO ESP ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">un detalle que rompe el kernel si se ignora</div>
+  <h1 class="title">¿Alcanza con mover <span class="accent">solo ESP</span>?</h1>
+  <div class="panel" style="border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">no del todo</div>
+    <p style="font-size:1.02rem; line-height:1.7;">
+      Cuando el compilador genera el código de un proceso, puede usar registros como <code>EBX</code>,
+      <code>ESI</code>, <code>EDI</code> o <code>EBP</code> para guardar variables locales — son los llamados
+      <b>registros "callee-saved"</b>: el código que llama a una función asume que van a seguir teniendo el
+      mismo valor cuando esa función vuelve. Si al cambiar de proceso solo movemos <code>esp</code> y no
+      esos registros, el proceso que entra se encuentra con <b>la "letra" del proceso anterior</b> escrita en
+      sus propios registros — un bug real, silencioso y muy difícil de detectar a simple vista.
+    </p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">la solución: pushad / popad</div>
+    <p style="margin:0;">Antes de cambiar <code>esp</code>, guardamos TODOS los registros de propósito general del proceso saliente en su propia pila (<code>pushad</code>). Después de cambiar <code>esp</code>, restauramos los del proceso entrante desde la suya (<code>popad</code>). Así cada proceso retoma exactamente como lo dejó.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
 /* ---------- SLIDE 11 · CAMBIO DE CONTEXTO ---------- */
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
   <div class="eyebrow">laboratorio · cambio de contexto</div>
-  <h1 class="title">Guardar y <span class="accent">restaurar</span> la ejecución</h1>
+  <h1 class="title">Guardar y <span class="accent">restaurar</span> la ejecución, en código</h1>
   <div class="panel">
-    <p>Cambiar de proceso significa: guardar dónde estaba la CPU (el stack pointer) y poner en su lugar el del siguiente proceso. Acá simplificamos guardando solo <code>esp</code> — en un kernel completo se guardan todos los registros de propósito general.</p>
+    <p>La versión robusta se escribe en <b>ensamblador puro</b>, no como <code>asm</code> dentro de una función de C. ¿Por qué? Porque el propio epílogo que GCC genera para toda función de C (que restaura <code>esp</code> a partir de <code>ebp</code> antes de retornar) deshace nuestro cambio manual apenas termina el bloque de <code>asm</code>. Escribirla aparte evita ese conflicto.</p>
   </div>
   <div class="code-block" style="margin-top:16px;">
-<span class="c-dim">// cambio_contexto.c — versión simplificada con fines didácticos</span>
-<span class="c-teal">void</span> cambiar_contexto(contexto_t *viejo, contexto_t *nuevo) {
-    asm volatile (
-        <span class="c-amber">"mov %%esp, %0\\n"</span>
-        : <span class="c-amber">"=r"</span> (viejo->esp)
-    );
-    asm volatile (
-        <span class="c-amber">"mov %0, %%esp\\n"</span>
-        :
-        : <span class="c-amber">"r"</span> (nuevo->esp)
-    );
-}
+<span class="c-dim">; switch.asm
+; void cambiar_contexto(contexto_t *viejo, contexto_t *nuevo);
+; contexto_t es { unsigned int esp; }</span>
+
+[bits 32]
+global cambiar_contexto
+
+cambiar_contexto:
+    mov eax, [esp+4]      <span class="c-dim">; argumento 1: puntero a contexto viejo</span>
+    mov edx, [esp+8]      <span class="c-dim">; argumento 2: puntero a contexto nuevo</span>
+
+    pushad                 <span class="c-dim">; 1. guardar TODOS los registros del proceso saliente</span>
+    mov [eax], esp         <span class="c-dim">;    y anotar dónde quedó su pila (justo después de pushad)</span>
+
+    mov esp, [edx]         <span class="c-dim">; 2. saltar a la pila del proceso entrante...</span>
+    popad                  <span class="c-dim">; 3. ...y restaurar SUS registros desde ahí</span>
+    ret                     <span class="c-dim">; 4. "retornar" a la dirección que esa pila tenía guardada</span>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 11B · AJUSTAR LA PILA INICIAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">atando cabos con crear_proceso()</div>
+  <h1 class="title">La <span class="accent">primera vez</span> que un proceso corre</h1>
+  <div class="panel">
+    <p>Hay un detalle importante: <code>popad</code> va a sacar 8 valores de la pila del proceso entrante, y <code>ret</code> va a saltar a lo que encuentre justo después. La <b>primera vez</b> que un proceso recibe la CPU, su pila todavía no pasó por ningún <code>pushad</code> real — así que tenemos que <b>simular uno a mano</b> al crearlo.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// dentro de crear_proceso(), construyendo la pila "de arriba hacia abajo":</span>
+<span class="c-teal">unsigned int</span> *tope = (<span class="c-teal">unsigned int</span>*)(p->pila + TAM_PILA);
+
+*(--tope) = (<span class="c-teal">unsigned int</span>) funcion; <span class="c-dim">// dirección de retorno — la consume "ret"</span>
+*(--tope) = <span class="c-amber">0</span>; <span class="c-dim">// EAX (dummy)</span>
+*(--tope) = <span class="c-amber">0</span>; <span class="c-dim">// ECX (dummy)</span>
+*(--tope) = <span class="c-amber">0</span>; <span class="c-dim">// EDX (dummy)</span>
+*(--tope) = <span class="c-amber">0</span>; <span class="c-dim">// EBX (dummy)</span>
+*(--tope) = <span class="c-amber">0</span>; <span class="c-dim">// ESP original (popad lo descarta sin usarlo)</span>
+*(--tope) = <span class="c-amber">0</span>; <span class="c-dim">// EBP (dummy)</span>
+*(--tope) = <span class="c-amber">0</span>; <span class="c-dim">// ESI (dummy)</span>
+*(--tope) = <span class="c-amber">0</span>; <span class="c-dim">// EDI (dummy) — queda como el nuevo tope</span>
+
+p->ctx.esp = (<span class="c-teal">unsigned int</span>) tope;
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">por qué en ese orden</div>
+    <p style="margin:0;">El orden imita exactamente lo que un <code>pushad</code> real dejaría en la pila. Así, la primera vez que <code>cambiar_contexto</code> haga <code>popad</code> sobre este proceso, encuentra "registros" válidos (aunque sean ceros) y el <code>ret</code> final salta directo a <code>funcion</code> — el punto de entrada del proceso.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 11C · TEORIA: QUE ES ROUND ROBIN ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">antes del código: la idea</div>
+  <h1 class="title">¿Qué es <span class="accent">Round-Robin</span>?</h1>
+  <div class="panel">
+    <p style="font-size:1.02rem; line-height:1.7;">
+      Round-robin es el algoritmo de planificación más simple que existe: <b>todos los procesos LISTOS
+      forman una fila circular</b>, y cada uno recibe un turno de CPU por igual, en orden, sin importar
+      qué tan importante sea. Cuando le toca a un proceso, corre un rato; cuando cede la CPU (o se le
+      acaba su turno), pasa al final de la fila y le toca al siguiente.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-circle-notch"></i><h4>Cola circular</h4><p>Después del último proceso, se vuelve al primero</p></div>
+    <div class="card-min"><i class="fa-solid fa-scale-balanced"></i><h4>Sin prioridades</h4><p>Todos los procesos LISTOS valen lo mismo</p></div>
+    <div class="card-min"><i class="fa-solid fa-forward-step"></i><h4>Salta los BLOQUEADOS</h4><p>Si un proceso no está LISTO, se lo saltea y sigue buscando</p></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">en nuestro kernel</div>
+    <p style="margin:0;">"Buscar al siguiente" significa: arrancar desde el proceso siguiente al actual, e ir avanzando en círculo (con el operador <code>%</code>) hasta encontrar uno en estado <code>LISTO</code>.</p>
   </div>
 </div>
 `, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
@@ -461,26 +571,36 @@ addSlide(`
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
   <div class="eyebrow">laboratorio · planificador</div>
-  <h1 class="title">Un scheduler <span class="accent">Round-Robin</span></h1>
+  <h1 class="title">Round-Robin, <span class="accent">paso a paso en código</span></h1>
   <div class="code-block">
 <span class="c-dim">// scheduler.c</span>
 <span class="c-teal">int</span> proceso_actual = <span class="c-amber">0</span>;
 
 <span class="c-teal">void</span> planificador(<span class="c-teal">void</span>) {
-    <span class="c-teal">int</span> anterior = proceso_actual;
-    <span class="c-teal">int</span> siguiente = (proceso_actual + <span class="c-amber">1</span>) % num_procesos;
+    <span class="c-teal">if</span> (num_procesos == <span class="c-amber">0</span>) <span class="c-teal">return</span>;  <span class="c-dim">// nada que planificar todavía</span>
 
-    <span class="c-dim">// buscar el próximo proceso en estado LISTO</span>
-    <span class="c-teal">while</span> (procesos[siguiente].estado != LISTO) {
+    <span class="c-teal">int</span> anterior  = proceso_actual;
+    <span class="c-teal">int</span> siguiente = (proceso_actual + <span class="c-amber">1</span>) % num_procesos; <span class="c-dim">// 1. avanzar un lugar en la cola circular</span>
+
+    <span class="c-dim">// 2. seguir avanzando hasta encontrar uno LISTO,
+    //    pero sin dar la vuelta entera si nadie más lo está</span>
+    <span class="c-teal">while</span> (procesos[siguiente].estado != LISTO && siguiente != anterior) {
         siguiente = (siguiente + <span class="c-amber">1</span>) % num_procesos;
     }
+    <span class="c-teal">if</span> (procesos[siguiente].estado != LISTO) <span class="c-teal">return</span>; <span class="c-dim">// nadie más listo — seguimos como estábamos</span>
 
-    procesos[anterior].estado = LISTO;
+    <span class="c-dim">// 3. actualizar estados: el que se va vuelve a LISTO, el que entra pasa a CORRIENDO</span>
+    procesos[anterior].estado  = LISTO;
     procesos[siguiente].estado = CORRIENDO;
     proceso_actual = siguiente;
 
+    <span class="c-dim">// 4. el cambio de contexto real — acá es donde "saltamos" de un proceso a otro</span>
     cambiar_contexto(&procesos[anterior].ctx, &procesos[siguiente].ctx);
 }
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">detalle importante</div>
+    <p style="margin:0;">La condición <code>siguiente != anterior</code> evita un bucle infinito: si el proceso actual es el ÚNICO en estado LISTO, no tiene sentido seguir buscando — simplemente sigue corriendo él mismo.</p>
   </div>
 </div>
 `, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
@@ -648,15 +768,21 @@ async function quizModulo2(){
 async function quizFinal(){
   await askMC(
     'Cambio de contexto',
-    'En nuestra versión simplificada, ¿qué es lo mínimo que guardamos para "recordar" un proceso?',
-    ['Todos los archivos abiertos','El stack pointer (esp)','El nombre del proceso','La hora del sistema'], 1,
-    'Guardamos el <b>stack pointer</b> (esp); un kernel completo guardaría también el resto de los registros de propósito general.'
+    '¿Por qué no alcanza con guardar y restaurar solo el stack pointer (esp)?',
+    ['Porque esp no existe en x86','Porque los registros callee-saved (EBX, ESI, EDI, EBP) también deben preservarse, o se corrompen entre procesos','Porque hace falta guardar la hora del sistema','Sí alcanza, no hace falta nada más'], 1,
+    'Si no guardamos también los registros de propósito general con <code>pushad</code>/<code>popad</code>, un proceso puede "heredar" silenciosamente valores del proceso anterior en sus propios registros — un bug real y difícil de detectar.'
+  );
+  await askMC(
+    'Pila inicial de un proceso',
+    'La primera vez que un proceso corre, ¿por qué crear_proceso() deja "valores dummy" apilados antes de la dirección de la función?',
+    ['Para ahorrar memoria','Para que el primer popad + ret de cambiar_contexto encuentre la pila con la forma esperada','Es un error, no debería hacerlo','Para depurar el código más fácil'], 1,
+    'El primer <code>cambiar_contexto</code> que reciba ese proceso va a hacer <code>popad</code> sobre su pila — necesita que esos 8 valores estén ahí, aunque sean ceros, para que el <code>ret</code> final salte correctamente a la función del proceso.'
   );
   await askMC(
     'Scheduler',
     '¿Qué algoritmo de planificación implementamos hoy?',
     ['Prioridades','Round-Robin','SJF (el más corto primero)','FIFO puro'], 1,
-    '<b>Round-Robin</b>: el planificador va pasando al siguiente proceso LISTO en orden circular.'
+    '<b>Round-Robin</b>: el planificador va pasando al siguiente proceso LISTO en orden circular, sin prioridades.'
   );
   await askMC(
     'Multitarea',

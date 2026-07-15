@@ -300,6 +300,31 @@ addSlide(`
 </div>
 `, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
 
+/* ---------- SLIDE 3B · ANALOGIA DEL BAÑO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">pensándolo en el mundo real</div>
+  <h1 class="title">Un baño de <span class="accent">un solo cuarto</span></h1>
+  <div class="panel">
+    <p style="font-size:1.02rem; line-height:1.7;">
+      Imaginate una oficina con un solo baño y una sola llave, colgada afuera de la puerta. Si querés
+      entrar, primero tenés que agarrar la llave. Si la llave no está (alguien más la tiene), esperás
+      afuera. El que está adentro, cuando termina, cuelga la llave de nuevo — recién ahí puede entrar
+      el siguiente.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-door-closed"></i><h4>El baño</h4><p>Es la sección crítica — el recurso compartido</p></div>
+    <div class="card-min"><i class="fa-solid fa-key"></i><h4>La llave</h4><p>Es el semáforo/mutex — solo puede tenerla una persona a la vez</p></div>
+    <div class="card-min"><i class="fa-solid fa-people-line"></i><h4>Los que esperan</h4><p>Son los otros procesos, bloqueados hasta que la llave quede libre</p></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">y si alguien se olvida la llave adentro...</div>
+    <p style="margin:0;">Ese es exactamente el error de programación que hay que evitar: si un proceso hace <code>sem_wait()</code> pero se olvida el <code>sem_signal()</code> al salir, la llave queda "adentro" para siempre y nadie más puede entrar — el equivalente a colgarse el kernel entero esperando ese semáforo.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
 /* ---------- SLIDE 4 · QUIZ MODULO 1 ---------- */
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
@@ -448,7 +473,11 @@ addSlide(`
   <div class="eyebrow">un nivel más alto: monitores</div>
   <h1 class="title">Semáforos, pero <span class="accent">más ordenados</span></h1>
   <div class="panel">
-    <p>Un monitor agrupa datos compartidos + funciones que los usan + la exclusión mutua, todo en una sola unidad — evitando que el programador se olvide de un <code>sem_wait</code> o un <code>sem_signal</code>. C no tiene monitores nativos (a diferencia de Java con <code>synchronized</code>), pero podemos simular la idea agrupando el semáforo <b>dentro</b> del struct de datos compartidos.</p>
+    <p>Con semáforos sueltos, <b>vos</b> tenés que acordarte de poner <code>sem_wait()</code> antes y <code>sem_signal()</code> después, cada vez, en cada función. Si te olvidás uno solo, se rompe todo. Un <b>monitor</b> resuelve esto agrupando el dato compartido y su candado <b>juntos</b>, para que sea imposible tocar el dato sin pasar por el candado.</p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">pensándolo simple</div>
+    <p style="margin:0;">Es la diferencia entre tener una caja fuerte suelta y una llave suelta en otro cajón (podés perder la llave, u olvidarte de usarla) — versus una caja fuerte que <b>viene con la cerradura incorporada</b>: es físicamente imposible abrirla sin la combinación.</p>
   </div>
   <div class="code-block" style="margin-top:16px;">
 <span class="c-dim">// la idea de un "monitor" hecho a mano en C</span>
@@ -456,6 +485,8 @@ addSlide(`
     <span class="c-pink">int</span> valor;
     semaforo_t mutex;   <span class="c-dim">// el candado viaja con el dato</span>
 } contador_seguro_t;
+<span class="c-dim">// C no tiene monitores nativos (Java sí, con "synchronized"),
+// pero agrupar el semáforo dentro del struct nos acerca a la idea</span>
   </div>
 </div>
 `, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
@@ -531,16 +562,18 @@ addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
   <div class="eyebrow">para profundizar en el obligatorio</div>
   <h1 class="title">Los otros <span class="accent">clásicos</span> de la sincronización</h1>
-  <div class="grid-cards">
-    <div class="card-min">
-      <i class="fa-solid fa-book-open"></i>
-      <h4>Lectores-escritores</h4>
-      <p>Muchos lectores pueden entrar juntos, pero un escritor necesita exclusividad total.</p>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">lectores-escritores</div>
+        <p><i class="fa-solid fa-book-open" style="color:var(--pink);"></i> Pensalo como un documento compartido: varias personas pueden <b>leerlo</b> al mismo tiempo sin problema, porque leer no cambia nada. Pero si alguien lo está <b>editando</b>, nadie más puede leerlo ni editarlo hasta que termine — si no, alguien vería datos a medio escribir.</p>
+      </div>
     </div>
-    <div class="card-min">
-      <i class="fa-solid fa-utensils"></i>
-      <h4>Filósofos comensales</h4>
-      <p>5 filósofos, 5 tenedores compartidos — el desafío clásico de evitar deadlock e inanición.</p>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">filósofos comensales</div>
+        <p><i class="fa-solid fa-utensils" style="color:var(--pink);"></i> 5 filósofos sentados en una mesa redonda, con un solo tenedor entre cada par. Para comer necesitan los 2 tenedores de sus costados. Si los 5 agarran el de la izquierda al mismo tiempo, todos esperan eternamente el de la derecha — nadie come.</p>
+      </div>
     </div>
   </div>
   <div class="panel" style="margin-top:16px;">

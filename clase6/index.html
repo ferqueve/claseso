@@ -259,6 +259,30 @@ contador++;
 </div>
 `, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
 
+/* ---------- SLIDE 2B · TRAZA CONCRETA DEL LOST UPDATE ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">viéndolo pasar, instrucción por instrucción</div>
+  <h1 class="title">Cómo se <span class="accent">pierde</span> una suma, en cámara lenta</h1>
+  <div class="panel">
+    <p>Supongamos que <code>contador</code> vale <b>5</b>, y el scheduler interrumpe a Proceso A justo después de leer, antes de escribir. Esto es lo que pasa si Proceso B corre en el medio:</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">Paso   Proceso A            Proceso B            contador (memoria)</span>
+1      temp_A = contador    —                    5
+2      (interrumpido)       temp_B = contador    5
+3      —                    temp_B = temp_B + 1  5
+4      —                    contador = temp_B    <span class="c-amber">6</span>
+5      temp_A = temp_A + 1  —                    6
+6      contador = temp_A    —                    <span class="c-red">6   ← debería ser 7!</span>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">qué pasó</div>
+    <p style="margin:0;">Proceso A leyó <code>contador = 5</code> <b>antes</b> de que B lo actualizara a 6, y en el paso 6 lo pisa con <code>temp_A + 1 = 6</code> — la suma de B se perdió por completo. Dos incrementos, y el contador solo subió una vez.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
 /* ---------- SLIDE 3 · SECCION CRITICA Y EXCLUSION MUTUA ---------- */
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
@@ -299,15 +323,40 @@ addSlide(`
 /* ---------- SLIDE 6 · QUE ES UN SEMAFORO ---------- */
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
-  <div class="eyebrow">semáforos</div>
-  <h1 class="title">Un contador con <span class="accent-amber">dos operaciones</span></h1>
+  <div class="eyebrow">antes del código: la idea</div>
+  <h1 class="title">Por qué se llama <span class="accent-amber">semáforo</span></h1>
   <div class="panel">
-    <p>Un semáforo es un entero con dos operaciones atómicas: <code>wait()</code> (o P) que decrementa y espera si el valor es 0 o menos, y <code>signal()</code> (o V) que incrementa y despierta a quien esperaba.</p>
+    <p style="font-size:1.02rem; line-height:1.7;">
+      No es casualidad el nombre: pensá en un <b>semáforo de tránsito</b> de un solo carril. Si está en rojo,
+      los autos esperan en fila. Cuando el auto que está adentro del carril sale, el semáforo pasa a verde y
+      deja entrar al siguiente. Dijkstra tomó esa misma idea para coordinar procesos: un contador que decide
+      quién puede "entrar" y quién tiene que esperar.
+    </p>
   </div>
   <div class="grid-cards" style="margin-top:16px;">
-    <div class="card-min"><i class="fa-solid fa-lock"></i><h4>wait() / P</h4><p>"Quiero entrar" — espera si no hay lugar</p></div>
-    <div class="card-min"><i class="fa-solid fa-lock-open"></i><h4>signal() / V</h4><p>"Ya salí" — libera un lugar</p></div>
-    <div class="card-min"><i class="fa-solid fa-toggle-on"></i><h4>Semáforo binario</h4><p>Valor 0 o 1 — actúa como un mutex</p></div>
+    <div class="card-min"><i class="fa-solid fa-car"></i><h4>Carril de un solo auto</h4><p>Como un semáforo binario (mutex): solo uno pasa a la vez</p></div>
+    <div class="card-min"><i class="fa-solid fa-road"></i><h4>Varios carriles</h4><p>Un semáforo con valor inicial N permite hasta N procesos a la vez</p></div>
+    <div class="card-min"><i class="fa-solid fa-triangle-exclamation"></i><h4>Fila de espera</h4><p>Los que no pueden pasar, esperan su turno — no avanzan igual</p></div>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+/* ---------- SLIDE 6B · LAS DOS OPERACIONES ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">un contador con <span class="accent-amber">dos botones</span></div>
+  <h1 class="title">wait() y <span class="accent-amber">signal()</span>, sin vueltas</h1>
+  <div class="panel">
+    <p>Por dentro, un semáforo es apenas un <b>número</b>. Nunca lo tocamos directamente — solo apretamos uno de estos dos "botones":</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-lock"></i><h4>wait()</h4><p>"Quiero pasar." Si el número es mayor a 0, lo resta en 1 y seguís. Si es 0, esperás ahí parado.</p></div>
+    <div class="card-min"><i class="fa-solid fa-lock-open"></i><h4>signal()</h4><p>"Ya terminé, pase el que sigue." Suma 1 al número.</p></div>
+    <div class="card-min"><i class="fa-solid fa-toggle-on"></i><h4>Semáforo binario</h4><p>Empieza en 1 — funciona como un candado con un solo lugar</p></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">un detalle importante, en simple</div>
+    <p style="margin:0;">Apretar el botón <code>wait()</code> tiene que ser algo que no se pueda interrumpir a la mitad — si dos procesos aprietan el botón "al mismo tiempo", el semáforo tiene que dejar pasar a uno solo. Eso es lo que garantiza el propio semáforo por dentro, para que nosotros no tengamos que preocuparnos por eso.</p>
   </div>
 </div>
 `, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
@@ -419,7 +468,35 @@ addSlide(`
   <div class="panel">
     <p>Un proceso productor agrega datos a un buffer, un consumidor los retira. Necesitamos 3 semáforos: <code>vacios</code> (espacios libres), <code>llenos</code> (datos disponibles) y <code>mutex</code> (exclusión mutua sobre el buffer).</p>
   </div>
-  <div class="code-block" style="margin-top:16px;">
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 12B · POR QUE 3 SEMAFOROS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">antes del código: por qué no alcanza con un mutex</div>
+  <h1 class="title">3 semáforos, <span class="accent">3 problemas distintos</span></h1>
+  <div class="panel">
+    <p>Podría parecer que con un solo <code>mutex</code> alcanza, pero resuelve un problema distinto al que necesitamos resolver. Cada semáforo del productor-consumidor evita un desastre diferente:</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-ban"></i><h4>Sin "mutex"</h4><p>Productor y consumidor podrían leer/escribir el buffer al mismo tiempo y corromper los índices</p></div>
+    <div class="card-min"><i class="fa-solid fa-triangle-exclamation"></i><h4>Sin "vacios"</h4><p>El productor seguiría escribiendo aunque el buffer esté lleno, pisando datos no leídos</p></div>
+    <div class="card-min"><i class="fa-solid fa-triangle-exclamation"></i><h4>Sin "llenos"</h4><p>El consumidor intentaría leer un buffer vacío, sacando datos que no existen</p></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">la regla de oro del orden</div>
+    <p style="margin:0;">Notá que en el código, <code>sem_wait(&vacios)</code> se pide <b>antes</b> que <code>sem_wait(&mutex)</code>. Si fuera al revés, un productor podría tomar el mutex, descubrir que no hay espacio, y quedarse esperando <b>con el mutex tomado</b> — bloqueando también al consumidor que necesita ese mutex para liberar espacio. Es un mini-interbloqueo, del tema que viene en la Clase 9.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+/* ---------- SLIDE 12C · CODIGO PRODUCTOR-CONSUMIDOR ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · buffer.c</div>
+  <h1 class="title">El código <span class="accent">completo</span></h1>
+  <div class="code-block">
 <span class="c-dim">#define</span> TAM_BUFFER 8
 <span class="c-pink">int</span> buffer[TAM_BUFFER];
 <span class="c-pink">int</span> pos_in = <span class="c-amber">0</span>, pos_out = <span class="c-amber">0</span>;
@@ -590,13 +667,13 @@ async function quizModulo1(){
   await askMC(
     'Condiciones de carrera',
     '¿Por qué "contador++" puede causar una condición de carrera?',
-    ['Porque C no permite sumar enteros','Porque en realidad son 3 pasos: leer, sumar, escribir — no es atómico','Porque el compilador lo prohíbe','Porque los contadores no existen en C'], 1,
+    ['Porque en realidad son 3 pasos: leer, sumar, escribir — no es atómico','Porque los contadores como tales no existen en C','Porque el compilador de C lo prohíbe explícitamente','Porque C no permite sumar números enteros'], 0,
     'Aunque se vea como una instrucción, "contador++" son 3 pasos separados. Si el scheduler interrumpe entre medio, se puede perder una actualización.'
   );
   await askMC(
     'Sección crítica',
     '¿Qué garantiza la exclusión mutua sobre una sección crítica?',
-    ['Que se ejecute más rápido','Que solo un proceso esté dentro a la vez','Que use menos memoria','Que nunca tenga errores de sintaxis'], 1,
+    ['Que nunca tenga errores de sintaxis','Que solo un proceso esté dentro a la vez','Que se ejecute más rápido','Que use menos memoria'], 1,
     'La exclusión mutua asegura que, en cualquier momento, como máximo un proceso esté ejecutando la sección crítica.'
   );
   Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora sí, a implementar el semáforo.'});
@@ -606,13 +683,13 @@ async function quizModulo2(){
   await askMC(
     'Semáforos',
     '¿Qué hace sem_wait() cuando el valor del semáforo es 0?',
-    ['Lo pone en negativo y sigue','Espera (cede la CPU) hasta que el valor sea mayor a 0','Termina el proceso','Incrementa el valor automáticamente'], 1,
+    ['Incrementa el valor automáticamente','Espera (cede la CPU) hasta que el valor sea mayor a 0','Lo pone en negativo y sigue','Termina el proceso'], 1,
     'Si el valor es 0 o menos, <code>sem_wait</code> espera — en nuestro caso, cediendo la CPU con <code>proceso_yield()</code> — hasta que otro proceso haga <code>sem_signal</code>.'
   );
   await askMC(
     'Semáforo binario',
     '¿Con qué valor inicial se usa un semáforo binario que actúa como candado (mutex)?',
-    ['0','1','-1','100'], 1,
+    ['-1','0','1','100'], 2,
     'Un semáforo inicializado en <b>1</b> permite que el primer proceso que llegue entre, y bloquea a los demás hasta que salga.'
   );
   Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, productor-consumidor y los demás clásicos.'});
@@ -622,19 +699,19 @@ async function quizFinal(){
   await askMC(
     'Productor-consumidor',
     '¿Para qué sirve el semáforo "vacios" en el problema productor-consumidor?',
-    ['Para contar cuántos datos hay disponibles para consumir','Para contar cuántos espacios libres quedan en el buffer','Para proteger el buffer de accesos simultáneos','Para contar cuántos procesos existen'], 1,
+    ['Para contar cuántos espacios libres quedan en el buffer','Para contar cuántos datos hay disponibles para consumir','Para contar cuántos procesos existen','Para proteger el buffer de accesos simultáneos'], 0,
     'El semáforo <b>vacios</b> cuenta los espacios libres del buffer; el productor lo espera antes de escribir un nuevo dato.'
   );
   await askMC(
     'Monitores',
     '¿Cuál es la ventaja principal de un monitor frente a usar semáforos sueltos?',
-    ['Es más rápido en todos los casos','Agrupa datos + exclusión mutua, reduciendo el riesgo de olvidar un wait/signal','No necesita sincronización','Solo funciona con un proceso'], 1,
+    ['Porque no necesitan ningún tipo de sincronización','Porque solo funcionan cuando hay un único proceso','Porque son más rápidos que los semáforos en todos los casos','Agrupa datos + exclusión mutua, reduciendo el riesgo de olvidar un wait/signal'], 3,
     'Un monitor agrupa el dato compartido junto con su mecanismo de exclusión mutua, reduciendo errores por olvidar un <code>wait</code> o <code>signal</code>.'
   );
   await askMC(
     'Filósofos comensales',
     '¿Cuál es el riesgo clásico del problema de los filósofos comensales?',
-    ['Que se queden sin comida','Deadlock: todos toman el tenedor izquierdo y esperan el derecho para siempre','Que coman demasiado rápido','Que no haya suficientes sillas'], 1,
+    ['Que los filósofos se queden sin sillas donde sentarse','Que los filósofos se queden sin comida disponible','Deadlock: todos toman el tenedor izquierdo y esperan el derecho para siempre','Que los filósofos coman demasiado rápido entre sí'], 2,
     'Si los 5 filósofos toman el tenedor izquierdo al mismo tiempo, todos esperan el derecho — un <b>deadlock</b> clásico.'
   );
   Swal.fire({...swalBase, icon:'success', title:'¡Clase 6 completa!', text:'Nos vemos en la próxima sesión — gestión de memoria.'});

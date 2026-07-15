@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laboratorio · Procesos y Semáforos en Acción</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f; --bg-1:#0d131b; --bg-2:#121a24; --panel-border:#1f2b38;
+  --green:#39ff88; --green-dim:#1f8a52; --amber:#ffb454; --red:#ff5c7a;
+  --cyan:#5ccfe6; --cyan-dim:#1f6b80;
+  --text:#dbe4ea; --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace; --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{min-height:100%;}
+body{
+  margin:0; background:
+    radial-gradient(ellipse at top left, rgba(92,207,230,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text); font-family:var(--display);
+}
+::selection{ background:var(--cyan); color:#04141a; }
+.crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:500; background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; }
+
+.statusbar{
+  position:sticky; top:0; z-index:200; height:46px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 22px; background:linear-gradient(180deg, rgba(13,19,27,0.97), rgba(13,19,27,0.85));
+  border-bottom:1px solid var(--panel-border); font-family:var(--mono); font-size:12.5px; color:var(--text-dim); backdrop-filter:blur(4px);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--cyan); box-shadow:0 0 6px var(--cyan); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+#progress-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid var(--cyan); color:var(--cyan); }
+
+.wrap{ max-width:900px; margin:0 auto; padding:36px 20px 100px 20px; }
+
+.hero{ text-align:center; margin-bottom:36px; }
+.eyebrow{ font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--cyan); display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; }
+.eyebrow::before, .eyebrow::after{ content:'//'; color:var(--text-dim); }
+h1.mega{ font-size:2.4rem; font-weight:700; margin:0 0 8px 0; }
+h1.mega .accent{ color:var(--cyan); }
+.hero p{ color:var(--text-dim); font-size:1rem; max-width:640px; margin:0 auto; }
+
+.exercise{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:12px; margin-bottom:22px; overflow:hidden;
+  transition:opacity .3s, filter .3s;
+}
+.exercise.locked{ opacity:.4; filter:grayscale(.6); pointer-events:none; }
+.exercise-head{
+  display:flex; align-items:center; gap:14px; padding:18px 22px; border-bottom:1px solid var(--panel-border);
+}
+.exercise-num{
+  width:38px; height:38px; border-radius:50%; border:2px solid var(--cyan-dim); color:var(--cyan);
+  display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; flex-shrink:0;
+}
+.exercise.solved .exercise-num{ background:var(--green); border-color:var(--green); color:#04120a; }
+.exercise-head h3{ margin:0; font-size:1.08rem; }
+.exercise-head .badge-diff{ margin-left:auto; font-family:var(--mono); font-size:.7rem; padding:3px 8px; border-radius:4px; border:1px solid var(--panel-border); color:var(--text-dim); }
+.exercise-body{ padding:20px 22px 22px 22px; }
+.exercise p.desc{ color:var(--text-dim); line-height:1.6; margin-bottom:14px; }
+
+.code-block{ background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:14px 16px; font-family:var(--mono); font-size:.82rem; color:var(--cyan); overflow-x:auto; white-space:pre; line-height:1.7; }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-pink{ color:#ff6ec7; }
+.code-block .c-green{ color:var(--green); }
+
+.blank-input{
+  background:#0a1018; border:1px solid var(--cyan-dim); color:var(--cyan); font-family:var(--mono); font-size:.82rem;
+  padding:4px 8px; border-radius:4px; width:220px; outline:none;
+}
+.blank-input:focus{ border-color:var(--cyan); box-shadow:0 0 0 2px rgba(92,207,230,.2); }
+.blank-input.wide{ width:100%; }
+.blank-input.small{ width:70px; text-align:center; }
+
+textarea.code-answer{
+  width:100%; background:#04070b; border:1px solid var(--panel-border); border-radius:8px; color:var(--cyan);
+  font-family:var(--mono); font-size:.82rem; padding:12px 14px; resize:vertical; min-height:64px; outline:none;
+}
+textarea.code-answer:focus{ border-color:var(--cyan); }
+
+.order-list{ display:flex; flex-direction:column; gap:8px; margin:14px 0; }
+.order-item{
+  background:var(--bg-1); border:1px solid var(--panel-border); border-radius:6px; padding:10px 14px;
+  font-family:var(--mono); font-size:.82rem; cursor:grab; display:flex; align-items:center; gap:10px; user-select:none;
+}
+.order-item i{ color:var(--text-dim); }
+.order-item.dragging{ opacity:.4; }
+
+.actions{ display:flex; align-items:center; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.btn-check{ background:var(--cyan); border:none; color:#04141a; font-family:var(--mono); font-weight:700; border-radius:6px; padding:9px 18px; font-size:.82rem; transition:.2s; }
+.btn-check:hover{ background:#7fdcf0; }
+.btn-hint{ background:transparent; border:1px solid var(--amber); color:var(--amber); font-family:var(--mono); border-radius:6px; padding:9px 16px; font-size:.8rem; transition:.2s; }
+.btn-hint:hover{ background:var(--amber); color:#211505; }
+.btn-sim{ background:transparent; border:1px solid var(--panel-border); color:var(--text-dim); font-family:var(--mono); border-radius:6px; padding:9px 16px; font-size:.8rem; }
+.btn-sim:hover{ border-color:var(--cyan); color:var(--cyan); }
+
+.feedback{ margin-top:14px; padding:12px 16px; border-radius:8px; font-size:.88rem; line-height:1.55; display:none; }
+.feedback.ok{ background:rgba(57,255,136,.08); border:1px solid var(--green-dim); color:var(--green); display:block; }
+.feedback.bad{ background:rgba(255,92,122,.08); border:1px solid #7a2c3a; color:var(--red); display:block; }
+.feedback.hint{ background:rgba(255,180,84,.08); border:1px solid #8a5b1f; color:var(--amber); display:block; }
+
+.trace-table{ width:100%; border-collapse:collapse; font-family:var(--mono); font-size:.78rem; margin-top:10px; }
+.trace-table th{ text-align:left; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:5px 8px; font-weight:400; }
+.trace-table td{ padding:5px 8px; border-bottom:1px dashed var(--panel-border); }
+.trace-table tr.bad-row td{ color:var(--red); }
+.trace-table tr.good-row td{ color:var(--green); }
+
+.final-panel{
+  text-align:center; padding:40px 20px; border:1px solid var(--panel-border); border-radius:12px;
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); display:none;
+}
+.final-panel.show{ display:block; }
+.final-panel i{ font-size:2.4rem; color:var(--green); margin-bottom:12px; display:block; }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.05rem !important; color:var(--cyan) !important; }
+
+#codigo-entrega-final{ margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> LABORATORIO · PROCESOS Y SEMÁFOROS</div>
+  <div class="seg" id="progress-badge">0 / 6 EJERCICIOS</div>
+</div>
+
+<div class="wrap">
+  <div class="hero animate__animated animate__fadeIn">
+    <div class="eyebrow">práctica autocorregida</div>
+    <h1 class="mega">Procesos y <span class="accent">Semáforos</span>, en acción</h1>
+    <p>6 ejercicios cortos, cada vez un poco más difíciles. Escribí o corregí un pedacito de código, presioná <b>Corregir</b>, y recibí la devolución al instante. Resolvé uno para desbloquear el siguiente.</p>
+  </div>
+
+  <div id="exercises"></div>
+
+  <div class="final-panel" id="finalPanel">
+    <i class="fa-solid fa-trophy"></i>
+    <h2 style="margin:0 0 8px 0;">¡Completaste los 6 ejercicios!</h2>
+    <p style="color:var(--text-dim);">Generá tu código de entrega y enviámelo por el canal del curso.</p>
+    <button class="btn-check" onclick="generarCodigoEntrega()"><i class="fa-solid fa-stamp"></i> Generar código de entrega</button>
+    <div id="codigo-entrega-final"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+<script>
+/* ============================================================
+   ESTADO
+   ============================================================ */
+const solved = new Set();
+const TOTAL = 6;
+
+function updateProgress(){
+  document.getElementById('progress-badge').textContent = `${solved.size} / ${TOTAL} EJERCICIOS`;
+  // desbloquear siguiente
+  for (let i = 1; i <= TOTAL; i++){
+    const el = document.getElementById('ex-' + i);
+    if (!el) continue;
+    if (i === 1 || solved.has(i - 1)) el.classList.remove('locked');
+    else el.classList.add('locked');
+  }
+  if (solved.size === TOTAL){
+    document.getElementById('finalPanel').classList.add('show');
+    document.getElementById('finalPanel').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+}
+
+function markSolved(n){
+  solved.add(n);
+  document.getElementById('ex-' + n).classList.add('solved');
+  updateProgress();
+}
+
+function showFeedback(id, type, html){
+  const el = document.getElementById(id);
+  el.className = 'feedback ' + type;
+  el.innerHTML = html;
+}
+
+function norm(s){
+  return s.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/* ============================================================
+   EJERCICIO 1 — completar sem_wait / sem_signal
+   ============================================================ */
+function buildEx1(){
+  return `
+  <div class="exercise-head">
+    <div class="exercise-num">1</div>
+    <h3>Envolvé la sección crítica</h3>
+    <span class="badge-diff">fácil</span>
+  </div>
+  <div class="exercise-body">
+    <p class="desc">Dos procesos incrementan <code>contador</code> a la vez, sin protección. Completá los dos espacios en blanco para proteger la sección crítica con <code>mutex_contador</code> (ya inicializado en 1).</p>
+    <div class="code-block">
+<span class="c-dim">void</span> incrementar_contador(<span class="c-dim">void</span>) {
+    <input class="blank-input" id="e1b1" placeholder="ej: sem_wait(&mutex);">;
+
+    <span class="c-dim">int</span> temp = contador;
+    temp = temp + 1;
+    contador = temp;
+
+    <input class="blank-input" id="e1b2" placeholder="ej: sem_signal(&mutex);">;
+}
+    </div>
+    <div class="actions">
+      <button class="btn-check" onclick="checkEx1()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-hint" onclick="hintEx1()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-1"></div>
+  </div>`;
+}
+function hintEx1(){
+  showFeedback('fb-1', 'hint', 'Pensá en el candado del baño: primero tenés que <b>agarrar la llave</b> (entrar a la sección crítica) y al final <b>colgarla de nuevo</b> (salir). La función que "agarra" es <code>sem_wait</code>, la que "suelta" es <code>sem_signal</code> — ambas sobre <code>&mutex_contador</code>.');
+}
+function checkEx1(){
+  const b1 = norm(document.getElementById('e1b1').value);
+  const b2 = norm(document.getElementById('e1b2').value);
+  const okWait = /sem_wait\s*\(\s*&mutex_contador\s*\)/.test(b1);
+  const okSignal = /sem_signal\s*\(\s*&mutex_contador\s*\)/.test(b2);
+  if (okWait && okSignal){
+    showFeedback('fb-1', 'ok', '<b>¡Correcto!</b> Ahora solo un proceso a la vez puede estar entre el <code>sem_wait</code> y el <code>sem_signal</code> — la condición de carrera sobre <code>contador</code> queda resuelta.');
+    markSolved(1);
+  } else if (!okWait && !okSignal){
+    showFeedback('fb-1', 'bad', 'Ninguno de los dos espacios está bien todavía. Recordá la sintaxis exacta: <code>sem_wait(&mutex_contador);</code> y <code>sem_signal(&mutex_contador);</code>.');
+  } else if (!okWait){
+    showFeedback('fb-1', 'bad', 'El segundo espacio está bien, pero el primero no — ahí necesitás "pedir permiso" para entrar, con <code>sem_wait(&mutex_contador);</code>.');
+  } else {
+    showFeedback('fb-1', 'bad', 'El primer espacio está bien, pero el segundo no — al salir hay que "devolver la llave" con <code>sem_signal(&mutex_contador);</code>.');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 2 — encontrar el signal faltante
+   ============================================================ */
+function buildEx2(){
+  return `
+  <div class="exercise-head">
+    <div class="exercise-num">2</div>
+    <h3>¿Qué le falta a este código?</h3>
+    <span class="badge-diff">fácil</span>
+  </div>
+  <div class="exercise-body">
+    <p class="desc">Este código tiene un bug: funciona la primera vez, pero <b>el kernel entero se cuelga</b> la segunda vez que alguien llama a esta función. Escribí la línea que falta.</p>
+    <div class="code-block">
+<span class="c-dim">void</span> escribir_archivo(<span class="c-dim">char</span> *datos) {
+    sem_wait(&mutex_fs);
+
+    fs_escribir(inodo_actual, datos, strlen(datos));
+
+    <span class="c-dim">// ¿qué falta acá?</span>
+}
+    </div>
+    <textarea class="code-answer" id="e2answer" placeholder="Escribí la línea que falta..."></textarea>
+    <div class="actions">
+      <button class="btn-check" onclick="checkEx2()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-hint" onclick="hintEx2()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-2"></div>
+  </div>`;
+}
+function hintEx2(){
+  showFeedback('fb-2', 'hint', 'Se tomó el semáforo con <code>sem_wait(&mutex_fs)</code> al principio... pero nunca se lo devuelve. Es la "llave que se queda adentro del baño".');
+}
+function checkEx2(){
+  const v = norm(document.getElementById('e2answer').value);
+  if (/sem_signal\s*\(\s*&mutex_fs\s*\)/.test(v)){
+    showFeedback('fb-2', 'ok', '<b>¡Exacto!</b> Faltaba <code>sem_signal(&mutex_fs);</code>. Sin eso, el semáforo queda "tomado" para siempre y cualquier otro proceso que llame a <code>sem_wait(&mutex_fs)</code> se queda esperando eternamente.');
+    markSolved(2);
+  } else {
+    showFeedback('fb-2', 'bad', 'Todavía no. Fijate qué semáforo se tomó al principio de la función (<code>mutex_fs</code>) — falta la operación contraria a <code>sem_wait</code>, sobre ese mismo semáforo.');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 3 — orden correcto (productor-consumidor)
+   ============================================================ */
+let ex3Order = ['vacios', 'mutex'];
+function buildEx3(){
+  return `
+  <div class="exercise-head">
+    <div class="exercise-num">3</div>
+    <h3>Ordená los semáforos correctamente</h3>
+    <span class="badge-diff">medio</span>
+  </div>
+  <div class="exercise-body">
+    <p class="desc">En <code>producir()</code>, el orden en que se piden los semáforos importa — pedirlos al revés puede generar un mini-interbloqueo. Arrastrá para poner el orden correcto (el primero que se pide, arriba).</p>
+    <div class="order-list" id="ex3list">
+      <div class="order-item" draggable="true" data-val="mutex"><i class="fa-solid fa-grip-lines"></i> sem_wait(&mutex);</div>
+      <div class="order-item" draggable="true" data-val="vacios"><i class="fa-solid fa-grip-lines"></i> sem_wait(&vacios);</div>
+    </div>
+    <div class="actions">
+      <button class="btn-check" onclick="checkEx3()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-hint" onclick="hintEx3()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-3"></div>
+  </div>`;
+}
+function setupDragEx3(){
+  const list = document.getElementById('ex3list');
+  if (!list) return;
+  let dragEl = null;
+  list.querySelectorAll('.order-item').forEach(item => {
+    item.addEventListener('dragstart', () => { dragEl = item; item.classList.add('dragging'); });
+    item.addEventListener('dragend', () => { item.classList.remove('dragging'); });
+  });
+  list.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const after = [...list.querySelectorAll('.order-item:not(.dragging)')].find(el => e.clientY <= el.getBoundingClientRect().top + el.getBoundingClientRect().height/2);
+    if (after) list.insertBefore(dragEl, after);
+    else list.appendChild(dragEl);
+  });
+}
+function hintEx3(){
+  showFeedback('fb-3', 'hint', 'Pensá qué pasaría si un productor toma el <code>mutex</code> primero y DESPUÉS descubre que no hay espacio (<code>vacios</code> en 0): se queda esperando espacio... con el mutex todavía tomado, bloqueando también al consumidor que lo necesita para liberar espacio.');
+}
+function checkEx3(){
+  const items = [...document.querySelectorAll('#ex3list .order-item')].map(el => el.dataset.val);
+  if (items[0] === 'vacios' && items[1] === 'mutex'){
+    showFeedback('fb-3', 'ok', '<b>¡Ese es el orden correcto!</b> Primero <code>sem_wait(&vacios)</code>, después <code>sem_wait(&mutex)</code>. Así, si no hay espacio, el productor espera SIN tener tomado el mutex — el consumidor puede seguir liberando espacio con total libertad.');
+    markSolved(3);
+  } else {
+    showFeedback('fb-3', 'bad', 'Ese orden puede generar un mini-interbloqueo. Pensá cuál de los dos semáforos, si lo tenés tomado, podría bloquear al consumidor para siempre.');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 4 — simular el resultado (input numérico)
+   ============================================================ */
+function buildEx4(){
+  return `
+  <div class="exercise-head">
+    <div class="exercise-num">4</div>
+    <h3>Simulá el resultado, a mano</h3>
+    <span class="badge-diff">medio</span>
+  </div>
+  <div class="exercise-body">
+    <p class="desc"><code>contador</code> empieza en <b>10</b>. Sin ninguna protección, pasa esto:</p>
+    <table class="trace-table">
+      <tr><th>Paso</th><th>Proceso A</th><th>Proceso B</th></tr>
+      <tr><td>1</td><td>temp_A = contador <span class="c-dim">(lee 10)</span></td><td>—</td></tr>
+      <tr><td>2</td><td>(interrumpido)</td><td>temp_B = contador <span class="c-dim">(lee 10)</span></td></tr>
+      <tr><td>3</td><td>—</td><td>temp_B = temp_B + 1</td></tr>
+      <tr><td>4</td><td>—</td><td>contador = temp_B</td></tr>
+      <tr><td>5</td><td>temp_A = temp_A + 1</td><td>—</td></tr>
+      <tr><td>6</td><td>contador = temp_A</td><td>—</td></tr>
+    </table>
+    <p class="desc" style="margin-top:12px;">¿Cuánto vale <code>contador</code> al final, aunque los DOS procesos hicieron <code>contador++</code>?</p>
+    <input class="blank-input small" id="e4answer" placeholder="?">
+    <div class="actions">
+      <button class="btn-check" onclick="checkEx4()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-hint" onclick="hintEx4()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-4"></div>
+  </div>`;
+}
+function hintEx4(){
+  showFeedback('fb-4', 'hint', 'Fijate bien en el paso 6: <code>contador = temp_A</code>. ¿Qué valor tenía guardado <code>temp_A</code> desde el paso 1? ¿Se enteró de lo que hizo B en los pasos 3-4?');
+}
+function checkEx4(){
+  const v = document.getElementById('e4answer').value.trim();
+  if (v === '11'){
+    showFeedback('fb-4', 'ok', '<b>¡Exacto, da 11!</b> Debería dar 12 (dos incrementos sobre 10), pero <code>temp_A</code> se quedó con el valor viejo (10) y lo pisa en el paso 6 — la suma de B se pierde. Esto es un <b>lost update</b>.');
+    markSolved(4);
+  } else if (v === '12'){
+    showFeedback('fb-4', 'bad', 'Ese sería el resultado correcto si no hubiera condición de carrera — pero justamente el ejercicio muestra que SÍ la hay. Revisá qué valor tenía guardado temp_A antes del paso 6.');
+  } else {
+    showFeedback('fb-4', 'bad', 'No es ese valor. Seguí la traza paso a paso y fijate qué le pasa a `contador` en cada línea donde se le asigna algo.');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 5 — arreglar la inicialización del semáforo
+   ============================================================ */
+function buildEx5(){
+  return `
+  <div class="exercise-head">
+    <div class="exercise-num">5</div>
+    <h3>Este semáforo nace roto</h3>
+    <span class="badge-diff">medio</span>
+  </div>
+  <div class="exercise-body">
+    <p class="desc">Con este código, <b>ningún proceso logra entrar nunca</b> a la sección crítica — se quedan esperando desde el primer momento. Corregí la línea que está mal.</p>
+    <div class="code-block">
+<span class="c-dim">semaforo_t</span> mutex_pantalla;
+
+<span class="c-dim">void</span> iniciar_kernel(<span class="c-dim">void</span>) {
+    <input class="blank-input wide" id="e5answer" value="sem_init(&mutex_pantalla, 0);">
+}
+    </div>
+    <div class="actions">
+      <button class="btn-check" onclick="checkEx5()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-hint" onclick="hintEx5()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-5"></div>
+  </div>`;
+}
+function hintEx5(){
+  showFeedback('fb-5', 'hint', 'Para que el PRIMER proceso pueda entrar sin esperar, un semáforo binario (mutex) tiene que arrancar en <b>1</b>, no en 0. Con 0, hasta el primero que llega se queda esperando un <code>sem_signal</code> que nunca va a llegar.');
+}
+function checkEx5(){
+  const v = norm(document.getElementById('e5answer').value);
+  if (/sem_init\s*\(\s*&mutex_pantalla\s*,\s*1\s*\)/.test(v)){
+    showFeedback('fb-5', 'ok', '<b>¡Corregido!</b> <code>sem_init(&mutex_pantalla, 1);</code> — con valor inicial 1, el primer proceso que llega puede entrar sin esperar, y a partir de ahí funciona como un candado normal.');
+    markSolved(5);
+  } else if (/sem_init\s*\(\s*&mutex_pantalla\s*,\s*0\s*\)/.test(v)){
+    showFeedback('fb-5', 'bad', 'Ese es justamente el valor roto (0) — con eso nadie puede entrar nunca. ¿Con qué valor debería arrancar un semáforo binario para que el primero pase?');
+  } else {
+    showFeedback('fb-5', 'bad', 'Revisá la sintaxis: <code>sem_init(&mutex_pantalla, VALOR);</code> — solo hay que cambiar el valor inicial.');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 6 — escribir la solución completa (desafío final)
+   ============================================================ */
+function buildEx6(){
+  return `
+  <div class="exercise-head">
+    <div class="exercise-num">6</div>
+    <h3>Desafío final: escribilo vos</h3>
+    <span class="badge-diff">difícil</span>
+  </div>
+  <div class="exercise-body">
+    <p class="desc">Dos procesos comparten un array <code>ultimo_valor_leido</code> de tamaño 1 (un "buzón" de un solo mensaje). Ya existe <code>semaforo_t mutex_buzon;</code> inicializado en 1. Escribí la función completa <code>guardar_mensaje(int valor)</code> que guarde <code>valor</code> en <code>ultimo_valor_leido[0]</code>, protegida correctamente.</p>
+    <textarea class="code-answer" id="e6answer" style="min-height:110px;" placeholder="void guardar_mensaje(int valor) {
+    ...
+}"></textarea>
+    <div class="actions">
+      <button class="btn-check" onclick="checkEx6()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-hint" onclick="hintEx6()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-6"></div>
+  </div>`;
+}
+function hintEx6(){
+  showFeedback('fb-6', 'hint', 'La estructura es la misma que en el Ejercicio 1: <code>sem_wait(&mutex_buzon);</code> → la operación sobre el dato compartido → <code>sem_signal(&mutex_buzon);</code>. Acá el "dato compartido" es <code>ultimo_valor_leido[0] = valor;</code>.');
+}
+function checkEx6(){
+  const v = norm(document.getElementById('e6answer').value);
+  const hasWait = /sem_wait\s*\(\s*&mutex_buzon\s*\)/.test(v);
+  const hasSignal = /sem_signal\s*\(\s*&mutex_buzon\s*\)/.test(v);
+  const hasWrite = /ultimo_valor_leido\s*\[\s*0\s*\]\s*=\s*valor/.test(v);
+  const waitIdx = v.search(/sem_wait\s*\(\s*&mutex_buzon\s*\)/);
+  const writeIdx = v.search(/ultimo_valor_leido\s*\[\s*0\s*\]\s*=\s*valor/);
+  const signalIdx = v.search(/sem_signal\s*\(\s*&mutex_buzon\s*\)/);
+  const orderOk = hasWait && hasWrite && hasSignal && waitIdx < writeIdx && writeIdx < signalIdx;
+
+  if (orderOk){
+    showFeedback('fb-6', 'ok', '<b>¡Perfecto!</b> Tomaste el candado, escribiste el dato compartido, y lo soltaste — exactamente la estructura que evita condiciones de carrera. Con esto completaste los 6 ejercicios.');
+    markSolved(6);
+  } else if (!hasWrite){
+    showFeedback('fb-6', 'bad', 'Falta (o está mal escrita) la línea que realmente guarda el dato: <code>ultimo_valor_leido[0] = valor;</code>.');
+  } else if (!hasWait || !hasSignal){
+    showFeedback('fb-6', 'bad', 'Falta proteger la sección crítica con el semáforo <code>mutex_buzon</code> — necesitás tanto <code>sem_wait</code> como <code>sem_signal</code> a su alrededor.');
+  } else {
+    showFeedback('fb-6', 'bad', 'Están las 3 piezas, pero en el orden equivocado. Primero se pide el candado, después se toca el dato, y al final se libera el candado.');
+  }
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const builders = [buildEx1, buildEx2, buildEx3, buildEx4, buildEx5, buildEx6];
+const container = document.getElementById('exercises');
+builders.forEach((fn, i) => {
+  const div = document.createElement('div');
+  div.className = 'exercise locked animate__animated animate__fadeInUp';
+  div.id = 'ex-' + (i + 1);
+  div.innerHTML = fn();
+  container.appendChild(div);
+});
+setupDragEx3();
+updateProgress();
+
+/* ============================================================
+   CODIGO DE ENTREGA
+   ============================================================ */
+const swalBase = {
+  background: 'var(--bg-1)', color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#5ccfe6', cancelButtonColor: '#6d7c8c',
+};
+
+async function generarCodigoEntrega(){
+  const { value: nombre } = await Swal.fire({
+    ...swalBase, title: 'Tu nombre', input: 'text', inputPlaceholder: 'Nombre y apellido',
+    inputValidator: (v) => !v && 'Ingresá tu nombre para generar el código',
+    confirmButtonText: 'Generar código',
+  });
+  if (!nombre) return;
+  const fecha = new Date();
+  const fechaStr = `${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
+  const iniciales = nombre.trim().split(/\s+/).map(p => p[0].toUpperCase()).join('').slice(0,4);
+  const codigo = `SO-LABSEM-${fechaStr}-${iniciales}-${solved.size}${TOTAL}`;
+  document.getElementById('codigo-entrega-final').innerHTML = `
+    <div class="code-block" style="text-align:center; font-size:1rem; margin-top:14px;">${codigo}</div>
+    <p style="color:var(--text-dim); font-size:.8rem; margin-top:8px;">Copiá este código y enviámelo por el canal del curso.</p>
+  `;
+}
+</script>
+</body>
+</html>

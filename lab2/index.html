@@ -97,8 +97,8 @@ textarea.code-answer:focus{ border-color:var(--cyan); }
 .order-item.dragging{ opacity:.4; }
 
 .actions{ display:flex; align-items:center; gap:10px; margin-top:16px; flex-wrap:wrap; }
-.btn-check{ background:var(--cyan); border:none; color:#04141a; font-family:var(--mono); font-weight:700; border-radius:6px; padding:9px 18px; font-size:.82rem; transition:.2s; }
-.btn-check:hover{ background:#7fdcf0; }
+.btn-entregar{ background:var(--cyan); border:none; color:#04141a; font-family:var(--mono); font-weight:700; border-radius:6px; padding:9px 18px; font-size:.82rem; transition:.2s; }
+.btn-entregar:hover{ background:#7fdcf0; }
 .btn-hint{ background:transparent; border:1px solid var(--amber); color:var(--amber); font-family:var(--mono); border-radius:6px; padding:9px 16px; font-size:.8rem; transition:.2s; }
 .btn-hint:hover{ background:var(--amber); color:#211505; }
 .btn-sim{ background:transparent; border:1px solid var(--panel-border); color:var(--text-dim); font-family:var(--mono); border-radius:6px; padding:9px 16px; font-size:.8rem; }
@@ -149,7 +149,7 @@ textarea.code-answer:focus{ border-color:var(--cyan); }
     <i class="fa-solid fa-trophy"></i>
     <h2 style="margin:0 0 8px 0;">¡Completaste los 6 ejercicios!</h2>
     <p style="color:var(--text-dim);">Generá tu código de entrega y enviámelo por el canal del curso.</p>
-    <button class="btn-check" onclick="generarCodigoEntrega()"><i class="fa-solid fa-stamp"></i> Generar código de entrega</button>
+    <button class="btn-entregar" onclick="generarCodigoEntrega()"><i class="fa-solid fa-stamp"></i> Generar código de entrega</button>
     <div id="codigo-entrega-final"></div>
   </div>
 </div>
@@ -188,7 +188,7 @@ function markSolved(n){
   if (fb) {
     const isLast = n === TOTAL;
     const btnLabel = isLast ? 'Ir al cierre' : `Siguiente ejercicio (${n + 1}) →`;
-    fb.innerHTML += `<div style="margin-top:12px;"><button class="btn-check" onclick="goToNext(${n})"><i class="fa-solid fa-arrow-right"></i> ${btnLabel}</button></div>`;
+    fb.innerHTML += `<div style="margin-top:12px;"><button class="btn-entregar" onclick="goToNext(${n})"><i class="fa-solid fa-arrow-right"></i> ${btnLabel}</button></div>`;
   }
   // desplazarse igual de forma automática, para quien no clickee el botón
   setTimeout(() => goToNext(n), 1200);
@@ -238,7 +238,7 @@ function buildEx1(){
 }
     </div>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx1()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-entregar" onclick="checkEx1()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx1()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-1"></div>
@@ -287,7 +287,7 @@ function buildEx2(){
     </div>
     <textarea class="code-answer" id="e2answer" placeholder="Escribí la línea que falta..."></textarea>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx2()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-entregar" onclick="checkEx2()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx2()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-2"></div>
@@ -324,7 +324,7 @@ function buildEx3(){
       <div class="order-item" draggable="true" data-val="vacios"><i class="fa-solid fa-grip-lines"></i> sem_wait(&vacios);</div>
     </div>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx3()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-entregar" onclick="checkEx3()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx3()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-3"></div>
@@ -382,7 +382,7 @@ function buildEx4(){
     <p class="desc" style="margin-top:12px;">¿Cuánto vale <code>contador</code> al final, aunque los DOS procesos hicieron <code>contador++</code>?</p>
     <input class="blank-input small" id="e4answer" placeholder="?">
     <div class="actions">
-      <button class="btn-check" onclick="checkEx4()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-entregar" onclick="checkEx4()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx4()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-4"></div>
@@ -423,7 +423,7 @@ function buildEx5(){
 }
     </div>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx5()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-entregar" onclick="checkEx5()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx5()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-5"></div>
@@ -460,7 +460,7 @@ function buildEx6(){
     ...
 }"></textarea>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx6()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-entregar" onclick="checkEx6()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx6()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-6"></div>

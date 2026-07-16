@@ -140,7 +140,7 @@ textarea.code-answer:focus{ border-color:var(--cyan); }
   <div class="hero animate__animated animate__fadeIn">
     <div class="eyebrow">práctica autocorregida</div>
     <h1 class="mega">Procesos y <span class="accent">Semáforos</span>, en acción</h1>
-    <p>6 ejercicios cortos, cada vez un poco más difíciles. Escribí o corregí un pedacito de código, presioná <b>Corregir</b>, y recibí la devolución al instante. Resolvé uno para desbloquear el siguiente.</p>
+    <p>6 ejercicios cortos, cada vez un poco más difíciles. Escribí o corregí un pedacito de código, presioná <b>Entregar respuesta</b>, y recibí la devolución al instante. Al acertar, se desbloquea el siguiente ejercicio y te lleva automáticamente hasta ahí.</p>
   </div>
 
   <div id="exercises"></div>
@@ -182,6 +182,26 @@ function markSolved(n){
   solved.add(n);
   document.getElementById('ex-' + n).classList.add('solved');
   updateProgress();
+
+  // agregar un botón explícito para pasar al siguiente ejercicio (además del scroll automático)
+  const fb = document.getElementById('fb-' + n);
+  if (fb) {
+    const isLast = n === TOTAL;
+    const btnLabel = isLast ? 'Ir al cierre' : `Siguiente ejercicio (${n + 1}) →`;
+    fb.innerHTML += `<div style="margin-top:12px;"><button class="btn-check" onclick="goToNext(${n})"><i class="fa-solid fa-arrow-right"></i> ${btnLabel}</button></div>`;
+  }
+  // desplazarse igual de forma automática, para quien no clickee el botón
+  setTimeout(() => goToNext(n), 1200);
+}
+
+function goToNext(n){
+  const next = document.getElementById('ex-' + (n + 1));
+  if (next) {
+    next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else {
+    const finalPanel = document.getElementById('finalPanel');
+    if (finalPanel) finalPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 function showFeedback(id, type, html){
@@ -218,7 +238,7 @@ function buildEx1(){
 }
     </div>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx1()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-check" onclick="checkEx1()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx1()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-1"></div>
@@ -267,7 +287,7 @@ function buildEx2(){
     </div>
     <textarea class="code-answer" id="e2answer" placeholder="Escribí la línea que falta..."></textarea>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx2()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-check" onclick="checkEx2()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx2()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-2"></div>
@@ -304,7 +324,7 @@ function buildEx3(){
       <div class="order-item" draggable="true" data-val="vacios"><i class="fa-solid fa-grip-lines"></i> sem_wait(&vacios);</div>
     </div>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx3()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-check" onclick="checkEx3()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx3()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-3"></div>
@@ -362,7 +382,7 @@ function buildEx4(){
     <p class="desc" style="margin-top:12px;">¿Cuánto vale <code>contador</code> al final, aunque los DOS procesos hicieron <code>contador++</code>?</p>
     <input class="blank-input small" id="e4answer" placeholder="?">
     <div class="actions">
-      <button class="btn-check" onclick="checkEx4()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-check" onclick="checkEx4()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx4()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-4"></div>
@@ -403,7 +423,7 @@ function buildEx5(){
 }
     </div>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx5()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-check" onclick="checkEx5()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx5()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-5"></div>
@@ -440,7 +460,7 @@ function buildEx6(){
     ...
 }"></textarea>
     <div class="actions">
-      <button class="btn-check" onclick="checkEx6()"><i class="fa-solid fa-check"></i> Corregir</button>
+      <button class="btn-check" onclick="checkEx6()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
       <button class="btn-hint" onclick="hintEx6()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
     </div>
     <div class="feedback" id="fb-6"></div>

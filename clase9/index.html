@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 9 — Interbloqueos</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --cyan:#5ccfe6;
+  --wine:#c24a5a;
+  --wine-dim:#6b2530;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(194,74,90,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--wine); color:#1c0509; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--wine); box-shadow:0 0 6px var(--wine); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--wine-dim), var(--wine)); box-shadow:0 0 8px var(--wine); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--wine); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--wine); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(194,74,90,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#6b2530; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.boot-lines .warn{ color:var(--wine); }
+.mega{ font-size:3.4rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--wine); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:18px; transition:transform .2s, border-color .2s; }
+.card-min:hover{ transform:translateY(-3px); border-color:var(--wine-dim); }
+.card-min i{ color:var(--cyan); font-size:1.3rem; margin-bottom:8px; display:block; }
+.card-min h4{ font-size:1rem; margin-bottom:4px; }
+.card-min p{ font-size:.85rem; color:var(--text-dim); margin:0; }
+
+.rag{ display:flex; align-items:center; justify-content:center; gap:40px; flex-wrap:wrap; font-family:var(--mono); font-size:.85rem; }
+.rag-node{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+.rag-circle{ width:64px; height:64px; border-radius:50%; border:2px solid var(--cyan); display:flex; align-items:center; justify-content:center; color:var(--cyan); font-weight:700; }
+.rag-square{ width:56px; height:56px; border:2px solid var(--amber); display:flex; align-items:center; justify-content:center; color:var(--amber); font-weight:700; }
+.rag-arrow{ color:var(--wine); font-size:1.6rem; }
+
+table.cmp{ width:100%; border-collapse:collapse; font-size:.9rem; }
+table.cmp th{ font-family:var(--mono); text-transform:uppercase; font-size:.72rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.cmp td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.8rem; color:var(--cyan); overflow-x:auto; white-space:pre;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-wine{ color:var(--wine); }
+.code-block .c-red{ color:var(--red); }
+
+.btn-quiz{
+  background:transparent; border:1px solid var(--wine-dim); color:var(--wine);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s;
+}
+.btn-quiz:hover{ background:var(--wine); color:#1c0509; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--wine); border-color:var(--wine-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--wine); box-shadow:0 0 6px var(--wine); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--wine) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:1.8rem; }
+  h1.title{ font-size:1.5rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .mod-num{ display:none; }
+  .rag{ flex-direction:column; }
+  .rag-arrow{ transform:rotate(90deg); }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-regular fa-clock"></i> <span id="clockLabel">18:15 – 19:35</span></div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria', clock: opts.clock || ''});
+}
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Retomando sesión ...................... clase_09.iso</div>
+    <div>[ <span class="warn">!!</span> ] Proceso A esperando semáforo B</div>
+    <div>[ <span class="warn">!!</span> ] Proceso B esperando semáforo A ....... interbloqueo detectado</div>
+  </div>
+  <div class="eyebrow">boot sequence · clase 09</div>
+  <h1 class="mega">Interbloqueos<br><span class="kernel">(Deadlocks)</span></h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Unidad 5 (cierre): cuando compartir recursos sale mal</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">repaso + agenda</div>
+  <h1 class="title">Semáforos que <span class="accent">se traban entre sí</span></h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>Tu kernel ya sincroniza procesos con semáforos (Clase 6) y reparte memoria (Clase 7).</li>
+      <li>Pero, ¿qué pasa si dos procesos se quedan esperando semáforos el uno del otro... para siempre?</li>
+    </ul>
+  </div>
+  <div class="grid-cards" style="margin-top:18px;">
+    <div class="card-min">
+      <i class="fa-solid fa-lock"></i>
+      <h4 class="accent-cyan">Módulo 1 · 18:15–19:35</h4>
+      <p>Qué es un interbloqueo, el grafo de asignación de recursos y las 4 condiciones de Coffman. <b>Teoría.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-shield"></i>
+      <h4 class="accent-amber">Módulo 2 · 19:45–21:00</h4>
+      <p>Provocar un deadlock real en el kernel y prevenirlo rompiendo una condición. <b>Práctica.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-building-columns"></i>
+      <h4 class="accent-amber">Módulo 3 · 21:05–22:30</h4>
+      <p>Algoritmo del banquero, detección y recuperación. <b>Práctica + quiz.</b></p>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">el problema</div>
+  <h1 class="title">Dos procesos, <span class="accent">esperando eternamente</span></h1>
+  <div class="panel">
+    <p style="font-size:1.05rem; line-height:1.7;">
+      Un <b>interbloqueo</b> ocurre cuando un grupo de procesos queda esperando indefinidamente recursos que
+      solo otro proceso del mismo grupo puede liberar — y ninguno va a liberar nada porque, a su vez,
+      está esperando. Nadie avanza. Nadie retrocede.
+    </p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// el ejemplo clásico de dos semáforos</span>
+<span class="c-dim">// Proceso A:</span>              <span class="c-dim">// Proceso B:</span>
+sem_wait(&semaforo_1);      sem_wait(&semaforo_2);
+sem_wait(&semaforo_2);      sem_wait(&semaforo_1);
+<span class="c-red">// ... A espera semaforo_2, que B tiene</span>
+<span class="c-red">// ... B espera semaforo_1, que A tiene</span>
+<span class="c-red">// interbloqueo</span>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">visualizando el problema</div>
+  <h1 class="title">El <span class="accent">grafo de asignación</span> de recursos</h1>
+  <div class="panel">
+    <div class="rag">
+      <div class="rag-node">
+        <div class="rag-circle">A</div>
+        <span>Proceso A</span>
+      </div>
+      <div class="rag-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+      <div class="rag-node">
+        <div class="rag-square">S2</div>
+        <span>tiene S1, quiere S2</span>
+      </div>
+    </div>
+    <div class="rag" style="margin-top:20px;">
+      <div class="rag-node">
+        <div class="rag-circle">B</div>
+        <span>Proceso B</span>
+      </div>
+      <div class="rag-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+      <div class="rag-node">
+        <div class="rag-square">S1</div>
+        <span>tiene S2, quiere S1</span>
+      </div>
+    </div>
+  </div>
+  <p style="color:var(--text-dim); font-family:var(--mono); font-size:.8rem; margin-top:12px; text-align:center;">
+    Un ciclo en este grafo (A espera lo que tiene B, B espera lo que tiene A) es la <span class="accent">firma</span> de un interbloqueo.
+  </p>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">condiciones necesarias</div>
+  <h1 class="title">Las 4 condiciones de <span class="accent">Coffman</span></h1>
+  <div class="panel">
+    <p>Para que exista un interbloqueo, estas 4 condiciones deben cumplirse <b>simultáneamente</b>. Si rompemos aunque sea una, el interbloqueo no puede ocurrir.</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-door-closed"></i><h4>Exclusión mutua</h4><p>El recurso no se puede compartir — solo un proceso a la vez</p></div>
+    <div class="card-min"><i class="fa-solid fa-hand-holding"></i><h4>Retención y espera</h4><p>Un proceso mantiene recursos mientras pide otros</p></div>
+    <div class="card-min"><i class="fa-solid fa-ban"></i><h4>No apropiación</h4><p>Nadie puede quitarle un recurso a un proceso a la fuerza</p></div>
+    <div class="card-min"><i class="fa-solid fa-rotate"></i><h4>Espera circular</h4><p>Existe un ciclo: A espera a B, B espera a A (o una cadena más larga)</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-lock accent"></i> Antes de provocar uno de verdad...</h1>
+  <p class="subtitle">Repasemos las condiciones de Coffman</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">Provocar y <span class="kernel" style="color:var(--amber);">prevenir</span><br>un interbloqueo real</h1>
+  <h2 class="subtitle">En tu propio kernel, no en un diagrama</h2>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · reproducir el bug</div>
+  <h1 class="title">Un interbloqueo en <span class="accent-amber">2 procesos</span></h1>
+  <div class="code-block">
+<span class="c-dim">// kernel.c — dos procesos que toman semáforos en orden distinto</span>
+semaforo_t sem_disco, sem_pantalla;
+
+<span class="c-wine">void</span> proceso_a(<span class="c-wine">void</span>) {
+    sem_wait(&sem_disco);
+    proceso_yield();          <span class="c-dim">// simula trabajo — le da tiempo a B de tomar sem_pantalla</span>
+    sem_wait(&sem_pantalla);  <span class="c-red">// A espera acá para siempre</span>
+    <span class="c-dim">// ... nunca llega</span>
+}
+
+<span class="c-wine">void</span> proceso_b(<span class="c-wine">void</span>) {
+    sem_wait(&sem_pantalla);
+    proceso_yield();
+    sem_wait(&sem_disco);     <span class="c-red">// B espera acá para siempre</span>
+    <span class="c-dim">// ... nunca llega</span>
+}
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">resultado</div>
+    <p style="margin:0;">Corriendo esto en QEMU: ambos procesos quedan en <code>BLOQUEADO</code> para siempre. El scheduler los recorre, pero ninguno pasa a <code>LISTO</code> — el kernel entero se queda "colgado".</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · la solución más simple</div>
+  <h1 class="title">Romper la <span class="accent-amber">espera circular</span></h1>
+  <div class="panel">
+    <p>La forma más simple de prevenir interbloqueos: <b>todos los procesos piden los recursos en el mismo orden</b>. Si ambos siempre piden primero <code>sem_disco</code> y después <code>sem_pantalla</code>, nunca puede formarse un ciclo.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// arreglado: mismo orden en los dos procesos</span>
+<span class="c-wine">void</span> proceso_a(<span class="c-wine">void</span>) {
+    sem_wait(&sem_disco);      <span class="c-green">// siempre primero sem_disco</span>
+    sem_wait(&sem_pantalla);   <span class="c-green">// después sem_pantalla</span>
+    <span class="c-dim">// ... trabajo ...</span>
+    sem_signal(&sem_pantalla);
+    sem_signal(&sem_disco);
+}
+
+<span class="c-wine">void</span> proceso_b(<span class="c-wine">void</span>) {
+    sem_wait(&sem_disco);      <span class="c-green">// mismo orden que A</span>
+    sem_wait(&sem_pantalla);
+    <span class="c-dim">// ... trabajo ...</span>
+    sem_signal(&sem_pantalla);
+    sem_signal(&sem_disco);
+}
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">otras formas de romper las condiciones</div>
+  <h1 class="title">No siempre se rompe la <span class="accent-amber">misma condición</span></h1>
+  <div class="grid-cards">
+    <div class="card-min"><i class="fa-solid fa-door-open"></i><h4>Contra exclusión mutua</h4><p>Usar recursos que sí se pueden compartir (ej. archivos de solo lectura) cuando sea posible</p></div>
+    <div class="card-min"><i class="fa-solid fa-list-check"></i><h4>Contra retención y espera</h4><p>Exigir que un proceso pida TODOS sus recursos de una vez, al principio</p></div>
+    <div class="card-min"><i class="fa-solid fa-clock"></i><h4>Contra no apropiación</h4><p>Permitir que el SO le quite un recurso a un proceso (con cuidado) si espera demasiado</p></div>
+    <div class="card-min"><i class="fa-solid fa-arrow-up-1-9"></i><h4>Contra espera circular</h4><p>Numerar los recursos y exigir que se pidan en orden creciente (lo que hicimos)</p></div>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-shield accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Sobre prevención de interbloqueos</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · práctica</div>
+  <h1 class="mega" style="font-size:2.6rem;">Evitar, detectar<br>y <span class="kernel">recuperarse</span></h1>
+  <h2 class="subtitle">Cuando prevenir no alcanza (o no se puede)</h2>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">evitar (avoidance), no solo prevenir</div>
+  <h1 class="title">El <span class="accent">algoritmo del banquero</span></h1>
+  <div class="panel">
+    <p>En vez de prohibir estructuralmente el interbloqueo (prevención), el algoritmo del banquero <b>evalúa cada pedido de recurso</b> y solo lo concede si el sistema queda en un <b>estado seguro</b> — es decir, si existe al menos un orden en el que todos los procesos podrían terminar.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// ejemplo simplificado: 2 procesos, 1 tipo de recurso (10 unidades totales)</span>
+<span class="c-dim">//              Máximo   Asignado   Podría necesitar</span>
+<span class="c-wine">Proceso A:</span>       7         3          4
+<span class="c-wine">Proceso B:</span>       5         2          3
+<span class="c-dim">// disponibles ahora mismo: 10 - 3 - 2 = 5</span>
+
+<span class="c-green">// ¿Es seguro? Sí: con 5 disponibles, A podría pedir hasta 4 más</span>
+<span class="c-green">// y terminar, liberando sus 7 — quedarían 5+3=8, suficiente para B (necesita 3 más)</span>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">cuando ya es tarde para prevenir</div>
+  <h1 class="title">Detección y <span class="accent">recuperación</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">detección</div>
+        <p>Periódicamente, el SO construye el grafo de asignación de recursos y busca <b>ciclos</b>. Si encuentra uno, hay un interbloqueo confirmado — igual que buscamos "a mano" en la Clase de hoy.</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">recuperación</div>
+        <ul class="checklist">
+          <li>Terminar uno o más procesos del ciclo (liberando sus recursos)</li>
+          <li>Hacer rollback de un proceso a un punto seguro anterior</li>
+          <li>Quitarle recursos a la fuerza a un proceso (apropiación forzada)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">honestidad técnica</div>
+    <p style="margin:0;">Nuestro kernel de juguete, por ahora, usa <b>prevención</b> (ordenar recursos) — más simple de implementar que detección activa. Un buen desafío de extensión: agregar un detector de ciclos que recorra periódicamente qué proceso espera qué semáforo.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase 09</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre de la clase</h1>
+  <p class="subtitle">Últimas preguntas antes de irnos</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:2.6rem;">Unidad 5 <span class="kernel">completa</span>.<br>Nos vamos a E/S.</h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">para la próxima</div>
+    <ul class="checklist">
+      <li>Repasar las 4 condiciones de Coffman y por qué alcanza con romper una</li>
+      <li>Revisar que sus semáforos siempre se pidan en el mismo orden</li>
+      <li>Seguimos con Unidad 6: entrada/salida — el driver de teclado por interrupciones</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada — apagando terminal...</div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  document.getElementById('clockLabel').textContent = s.clock;
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#c24a5a',
+  cancelButtonColor: '#6d7c8c',
+};
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Interbloqueos',
+    '¿Qué señala, en el grafo de asignación de recursos, que hay un interbloqueo?',
+    ['Un proceso con prioridad alta','Muchos procesos en estado LISTO','Un ciclo (A espera lo que tiene B, B espera lo que tiene A)','Un nodo sin conexiones'], 2,
+    'Un <b>ciclo</b> en el grafo es la señal inequívoca de un interbloqueo: cada proceso del ciclo espera algo que tiene el siguiente.'
+  );
+  await askMC(
+    'Condiciones de Coffman',
+    '¿Cuál de estas NO es una de las 4 condiciones necesarias para un interbloqueo?',
+    ['Espera circular','Retención y espera','Alta prioridad de proceso','Exclusión mutua'], 2,
+    'La prioridad del proceso no es una condición de Coffman. Las 4 son: exclusión mutua, retención y espera, no apropiación, y espera circular.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora sí, a provocar uno de verdad.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'Prevención',
+    '¿Qué condición de Coffman rompemos al exigir que todos los procesos pidan los recursos en el mismo orden?',
+    ['Exclusión mutua','No apropiación','Retención y espera','Espera circular'], 3,
+    'Ordenar los recursos rompe la <b>espera circular</b>: si todos piden en el mismo orden, nunca puede formarse un ciclo de espera.'
+  );
+  await askMC(
+    'Otras estrategias',
+    '¿Qué estrategia rompe la condición de "retención y espera"?',
+    ['Numerar los recursos','Exigir que un proceso pida todos sus recursos de una vez, al principio','Permitir que el SO le quite recursos a un proceso','Usar solo recursos compartibles'], 1,
+    'Si un proceso pide TODOS sus recursos de una vez (o ninguno), no puede quedarse "reteniendo uno mientras espera otro".'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, evitar, detectar y recuperarse.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'Algoritmo del banquero',
+    '¿Qué hace el algoritmo del banquero antes de conceder un recurso?',
+    ['Verifica si el sistema queda en un estado seguro tras concederlo','Termina automáticamente el proceso que lo solicita','Le pregunta directamente al usuario qué hacer','Nada en particular, siempre concede lo que se pide'], 0,
+    'El algoritmo evalúa si, tras conceder el recurso, todavía existe una secuencia en la que todos los procesos puedan terminar — un <b>estado seguro</b>.'
+  );
+  await askMC(
+    'Prevención vs. evitación',
+    '¿Cuál es la diferencia principal entre "prevenir" y "evitar" un interbloqueo?',
+    ['Son exactamente sinónimos, no hay diferencia','Prevenir requiere bastante más cálculo que evitar','Prevenir rompe estructuralmente una condición; evitar evalúa cada pedido en tiempo real (como el banquero)','Evitar resulta siempre más simple de implementar'], 2,
+    'Prevención es una regla fija (ej. orden de recursos); evitación (como el algoritmo del banquero) analiza dinámicamente cada pedido antes de concederlo.'
+  );
+  await askMC(
+    'Detección y recuperación',
+    '¿Cuál de estas es una estrategia válida de recuperación tras detectar un interbloqueo?',
+    ['Reiniciar la BIOS','Terminar uno o más procesos del ciclo para liberar sus recursos','Aumentar la prioridad de todos los procesos','Ignorarlo y esperar que se resuelva solo'], 1,
+    'Terminar (o hacer rollback de) uno o más procesos del ciclo libera recursos y rompe el interbloqueo, aunque tenga un costo.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase 9 completa!', text:'Unidad 5 cerrada — nos vemos en la próxima sesión, Unidad 6: Entrada/Salida.'});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 10 — Entrada/Salida</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --cyan:#5ccfe6;
+  --lime:#9ee85a;
+  --lime-dim:#537a30;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(158,232,90,0.06), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--lime); color:#0d1a05; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--lime); box-shadow:0 0 6px var(--lime); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--lime-dim), var(--lime)); box-shadow:0 0 8px var(--lime); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--lime); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--lime); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(158,232,90,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#4a6b2f; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3.3rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--lime); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:18px; transition:transform .2s, border-color .2s; }
+.card-min:hover{ transform:translateY(-3px); border-color:var(--lime-dim); }
+.card-min i{ color:var(--cyan); font-size:1.3rem; margin-bottom:8px; display:block; }
+.card-min h4{ font-size:1rem; margin-bottom:4px; }
+.card-min p{ font-size:.85rem; color:var(--text-dim); margin:0; }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.78rem; color:var(--cyan); overflow-x:auto; white-space:pre;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-lime{ color:var(--lime); }
+.code-block .c-red{ color:var(--red); }
+
+.btn-quiz{
+  background:transparent; border:1px solid var(--lime-dim); color:var(--lime);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s;
+}
+.btn-quiz:hover{ background:var(--lime); color:#0d1a05; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--lime); border-color:var(--lime-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--lime); box-shadow:0 0 6px var(--lime); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--lime) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:1.8rem; }
+  h1.title{ font-size:1.5rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .mod-num{ display:none; }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-regular fa-clock"></i> <span id="clockLabel">18:15 – 19:35</span></div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria', clock: opts.clock || ''});
+}
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Retomando sesión ...................... clase_10.iso</div>
+    <div>[ <span class="ok">OK</span> ] Remapeando PIC 8259 ................... IRQ 0-15 → vectores 32-47</div>
+    <div>[ <span class="ok">OK</span> ] Instalando driver de teclado .......... IRQ1 activo</div>
+  </div>
+  <div class="eyebrow">boot sequence · clase 10</div>
+  <h1 class="mega">Entrada <span class="kernel">/</span> Salida</h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Unidad 6: que tu kernel por fin te escuche</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">repaso + agenda</div>
+  <h1 class="title">Tu kernel <span class="accent">habla</span>, pero no <span class="accent-amber">escucha</span></h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>Hasta ahora, todo lo que tu kernel hace es escribir en pantalla — nunca leyó nada del mundo exterior.</li>
+      <li>Hoy: un driver de teclado real, por interrupciones, que te permite escribir y que el kernel reaccione.</li>
+    </ul>
+  </div>
+  <div class="grid-cards" style="margin-top:18px;">
+    <div class="card-min">
+      <i class="fa-solid fa-plug"></i>
+      <h4 class="accent-cyan">Módulo 1 · 18:15–19:35</h4>
+      <p>Dispositivos, controladores, interrupciones vs. polling, DMA. <b>Teoría.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-microchip"></i>
+      <h4 class="accent-amber">Módulo 2 · 19:45–21:00</h4>
+      <p>Remapear el PIC 8259 e instalar la IDT. <b>Práctica.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-keyboard"></i>
+      <h4 class="accent-amber">Módulo 3 · 21:05–22:30</h4>
+      <p>El driver de teclado completo, verificado con QEMU real. <b>Práctica + quiz.</b></p>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">dispositivos y controladores</div>
+  <h1 class="title">Cada dispositivo, un <span class="accent">controlador</span></h1>
+  <div class="panel">
+    <p style="font-size:1.05rem; line-height:1.7;">
+      El SO no habla directo con el hardware físico del teclado, el disco o la pantalla — habla con su
+      <b>controlador</b>: un chip (o parte de él) que expone <b>puertos de E/S</b> o direcciones de memoria
+      a través de los cuales el SO puede leer datos y mandar comandos.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-keyboard"></i><h4>Teclado</h4><p>Controlador en el puerto 0x60 (datos) y 0x64 (comandos)</p></div>
+    <div class="card-min"><i class="fa-solid fa-hard-drive"></i><h4>Disco</h4><p>Controlador ATA/IDE o AHCI con sus propios puertos</p></div>
+    <div class="card-min"><i class="fa-solid fa-desktop"></i><h4>Pantalla</h4><p>Ya la usamos: memoria mapeada en 0xb8000</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">interrupciones vs. polling</div>
+  <h1 class="title">¿Preguntar todo el tiempo, o <span class="accent">que te avisen</span>?</h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">polling</div>
+        <p>El CPU pregunta todo el tiempo "¿hay algo nuevo?" en un bucle. Simple, pero desperdicia CPU: la mayoría de las veces la respuesta es "no".</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">interrupciones</div>
+        <p>El dispositivo le avisa al CPU cuando tiene algo — una señal eléctrica que interrumpe lo que sea que el CPU estuviera haciendo. El CPU puede hacer otra cosa mientras tanto.</p>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">en nuestro kernel</div>
+    <p style="margin:0;">Vamos a usar <b>interrupciones</b> para el teclado: cada tecla presionada genera una señal (IRQ1) que interrumpe al CPU, sin importar qué proceso estuviera corriendo.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">un vistazo rápido</div>
+  <h1 class="title">DMA: cuando ni el <span class="accent">CPU</span> hace falta</h1>
+  <div class="panel">
+    <p><b>DMA (Direct Memory Access)</b> permite que un dispositivo (como un disco) transfiera datos directo a memoria RAM, sin pasar por el CPU para cada byte. El CPU solo configura la transferencia al principio y recibe una interrupción cuando termina.</p>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">alcance de hoy</div>
+    <p style="margin:0;">No vamos a implementar DMA en el kernel de juguete — el teclado transfiere muy pocos datos (un byte por tecla), así que no lo necesita. Queda como panorama general de los mecanismos de E/S.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-plug accent"></i> Antes de tocar hardware real...</h1>
+  <p class="subtitle">Repasemos interrupciones, polling y DMA</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:2.6rem;">PIC e <span class="kernel" style="color:var(--amber);">IDT</span></h1>
+  <h2 class="subtitle">La infraestructura que hace falta antes del driver</h2>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · pic.c</div>
+  <h1 class="title">Remapear el <span class="accent-amber">PIC 8259</span></h1>
+  <div class="panel">
+    <p>El PIC (chip controlador de interrupciones) manda las IRQ 0-15 a los vectores 8-15 y 0x70-0x77 <b>por defecto</b> — que la CPU ya usa para sus propias excepciones. Hay que remapearlo a vectores libres (32 en adelante) antes de instalar cualquier driver.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// pic.c — código real, verificado en QEMU</span>
+<span class="c-lime">void</span> pic_remapear(<span class="c-lime">void</span>) {
+    outb(PIC1_COMANDO, <span class="c-amber">0x11</span>); <span class="c-dim">// ICW1: iniciar configuración</span>
+    outb(PIC2_COMANDO, <span class="c-amber">0x11</span>);
+
+    outb(PIC1_DATOS, <span class="c-amber">0x20</span>);   <span class="c-dim">// ICW2: IRQ 0-7  → interrupciones 32-39</span>
+    outb(PIC2_DATOS, <span class="c-amber">0x28</span>);   <span class="c-dim">// ICW2: IRQ 8-15 → interrupciones 40-47</span>
+
+    outb(PIC1_DATOS, <span class="c-amber">0x04</span>);   <span class="c-dim">// ICW3: hay un PIC esclavo en IRQ2</span>
+    outb(PIC2_DATOS, <span class="c-amber">0x02</span>);
+
+    outb(PIC1_DATOS, <span class="c-amber">0x01</span>);   <span class="c-dim">// ICW4: modo 8086</span>
+    outb(PIC2_DATOS, <span class="c-amber">0x01</span>);
+
+    <span class="c-dim">// enmascaramos TODO por ahora — cada driver desenmascara su IRQ</span>
+    outb(PIC1_DATOS, <span class="c-amber">0xFF</span>);
+    outb(PIC2_DATOS, <span class="c-amber">0xFF</span>);
+}
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">un bug real que encontramos así</div>
+  <h1 class="title">¿Por qué <span class="accent-amber">enmascarar todo</span> primero?</h1>
+  <div class="panel" style="border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">lo que pasó al probarlo</div>
+    <p style="font-size:1.02rem; line-height:1.7;">
+      La primera versión de este código restauraba las máscaras originales del PIC en vez de enmascarar todo.
+      El temporizador (IRQ0) venía <b>desenmascarado de fábrica</b>. Como todavía no instalamos ningún
+      manejador para su vector, la primera interrupción de timer que llegó encontró una entrada vacía en la
+      IDT → excepción sin manejador → <b>triple fault</b> → la CPU se reiniciaba sola.
+    </p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">la lección</div>
+    <p style="margin:0;">Por eso <code>pic_remapear()</code> enmascara TODAS las IRQ al final, y cada driver (como el de teclado) desenmascara puntualmente solo la suya con <code>pic_desenmascarar_irq()</code>.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · idt.c</div>
+  <h1 class="title">La <span class="accent-amber">IDT</span>: la GDT de las interrupciones</h1>
+  <div class="panel">
+    <p>Así como la GDT (Clase 4) le dice a la CPU cómo son los segmentos de memoria, la <b>IDT</b> (Interrupt Descriptor Table) le dice qué función ejecutar para cada número de interrupción.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// idt.c — código real, verificado en QEMU</span>
+<span class="c-lime">void</span> idt_set_gate(<span class="c-lime">int</span> n, <span class="c-lime">unsigned int</span> handler) {
+    idt[n].offset_bajo = handler & <span class="c-amber">0xFFFF</span>;
+    idt[n].selector    = <span class="c-amber">0x08</span>;  <span class="c-dim">// selector de código del kernel (GDT, Clase 4)</span>
+    idt[n].cero        = <span class="c-amber">0</span>;
+    idt[n].tipo_attr   = <span class="c-amber">0x8E</span>;  <span class="c-dim">// presente, anillo 0, gate de interrupción 32 bits</span>
+    idt[n].offset_alto = (handler >> <span class="c-amber">16</span>) & <span class="c-amber">0xFFFF</span>;
+}
+
+<span class="c-lime">void</span> idt_instalar(<span class="c-lime">void</span>) {
+    idt_ptr.limite = <span class="c-amber">sizeof</span>(idt) - <span class="c-amber">1</span>;
+    idt_ptr.base   = (<span class="c-lime">unsigned int</span>) &idt;
+    idt_cargar((<span class="c-lime">unsigned int</span>) &idt_ptr);  <span class="c-dim">// ejecuta "lgdt"... digo, "lidt" (en .asm)</span>
+}
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-microchip accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Sobre el PIC y la IDT</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · práctica</div>
+  <h1 class="mega" style="font-size:2.6rem;">El driver de<br><span class="kernel">teclado</span>, de verdad</h1>
+  <h2 class="subtitle">Verificado enviando teclas reales a QEMU</h2>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · keyboard.c</div>
+  <h1 class="title">Leer el <span class="accent">scancode</span></h1>
+  <div class="panel">
+    <p>Cada vez que se presiona o suelta una tecla, el controlador del teclado dispara <b>IRQ1</b> y deja un <b>scancode</b> en el puerto <code>0x60</code>. El bit más alto indica si fue "presionar" (0) o "soltar" (1) — a nosotros solo nos interesa presionar.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// keyboard.c — el manejador de la interrupción</span>
+<span class="c-dim">// GCC puede generar el prólogo/epílogo (con "iret" final) automáticamente
+// con __attribute__((interrupt)) — evita escribir el stub en asm a mano</span>
+<span class="c-lime">void</span> __attribute__((interrupt)) irq1_teclado(<span class="c-lime">void</span> *frame) {
+    (<span class="c-lime">void</span>) frame;
+
+    <span class="c-lime">unsigned char</span> scancode = inb(PUERTO_TECLADO);
+
+    <span class="c-dim">// bit 7 en 1 = "tecla soltada" (break code) — las ignoramos</span>
+    <span class="c-lime">if</span> (!(scancode & <span class="c-amber">0x80</span>)) {
+        <span class="c-lime">char</span> c = tabla_scancode[(<span class="c-lime">unsigned char</span>) scancode];
+        <span class="c-lime">if</span> (c != <span class="c-amber">0</span>) buffer_push(c);
+    }
+
+    pic_enviar_eoi(<span class="c-amber">1</span>);  <span class="c-dim">// avisarle al PIC "ya la atendí"</span>
+}
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">detalle real que encontramos</div>
+    <p style="margin:0;">Compilar esto directo con GCC dio: <code>sorry, unimplemented: 80387 instructions aren't allowed in an interrupt service routine</code>. La solución: compilar con <code>-mgeneral-regs-only</code>, que le prohíbe a GCC usar instrucciones de punto flotante/SSE dentro de un manejador de interrupción.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · el buffer circular</div>
+  <h1 class="title">Guardar teclas hasta que alguien las <span class="accent">pida</span></h1>
+  <div class="panel">
+    <p>El manejador de interrupción no "espera" a que el kernel lea la tecla — la deja en un buffer circular y sigue. Cualquier otra parte del kernel puede preguntar después si hay datos y leerlos quel sea el momento.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// keyboard.c</span>
+<span class="c-lime">int</span> teclado_hay_dato(<span class="c-lime">void</span>) {
+    <span class="c-lime">return</span> buf_inicio != buf_fin;
+}
+
+<span class="c-lime">char</span> teclado_leer(<span class="c-lime">void</span>) {
+    <span class="c-lime">if</span> (buf_inicio == buf_fin) <span class="c-lime">return</span> <span class="c-amber">0</span>;  <span class="c-dim">// buffer vacío</span>
+    <span class="c-lime">char</span> c = buffer_teclado[buf_inicio];
+    buf_inicio = (buf_inicio + <span class="c-amber">1</span>) % TAM_BUFFER_TECLADO;
+    <span class="c-lime">return</span> c;
+}
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">verificado con QEMU real</div>
+    <p style="margin:0;">Le mandamos las teclas <code>h</code>, <code>o</code>, <code>l</code>, <code>a</code> a QEMU por su monitor y volcamos la memoria de video: la fila apareció como <code>"Escribi algo: hola"</code> — el driver funciona de punta a punta.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase 10</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre de la clase</h1>
+  <p class="subtitle">Últimas preguntas antes de irnos</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:2.6rem;">Tu kernel ya<br><span class="kernel">te escucha</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">para la próxima</div>
+    <ul class="checklist">
+      <li>Repasar por qué hay que enmascarar todas las IRQ antes de desenmascarar la propia</li>
+      <li>Probar el driver de teclado en su propia VM</li>
+      <li>Seguimos con: integración final del proyecto (Unidad 7) — armar todo junto para el obligatorio</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada — apagando terminal...</div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  document.getElementById('clockLabel').textContent = s.clock;
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#9ee85a',
+  cancelButtonColor: '#6d7c8c',
+};
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Interrupciones vs. polling',
+    '¿Cuál es la principal desventaja del polling frente a las interrupciones?',
+    ['Que no puede funcionar en absoluto con discos','Que no existe como mecanismo en hardware real','Que resulta mucho más difícil de programar','Desperdicia CPU preguntando todo el tiempo aunque no haya nada nuevo'], 3,
+    'El polling ocupa el CPU en un bucle de preguntas constantes, aunque la mayoría de las veces no haya nada nuevo que atender.'
+  );
+  await askMC(
+    'DMA',
+    '¿Qué ventaja principal ofrece el DMA?',
+    ['Permite transferir datos a memoria sin que el CPU intervenga en cada byte','Reemplaza a las interrupciones de hardware por completo','Hace que el teclado responda de forma más rápida','Solamente sirve para acelerar la memoria de video'], 0,
+    'DMA permite que un dispositivo transfiera datos directo a RAM; el CPU solo configura la transferencia y es interrumpido cuando termina.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora sí, a configurar el PIC y la IDT.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'PIC',
+    '¿Por qué hay que remapear el PIC 8259 antes de usar interrupciones de hardware?',
+    ['Para ahorrar memoria RAM del sistema en general','Para que el teclado escriba caracteres en mayúsculas','Porque de otro modo no seria posible remapearlo nunca','Porque por defecto sus vectores chocan con las excepciones que ya usa la CPU'], 3,
+    'Por defecto el PIC manda las IRQ a vectores que la CPU ya usa para sus propias excepciones (0-31) — hay que moverlas a partir del vector 32.'
+  );
+  await askMC(
+    'El bug del triple fault',
+    '¿Por qué la primera versión de pic_remapear() causaba un triple fault?',
+    ['Dejaba el timer (IRQ0) desenmascarado sin tener un manejador instalado para su vector','Por usar de forma incorrecta el operador módulo','Por un simple error de tipeo en el código fuente','Porque QEMU en particular no soporta bien el PIC'], 0,
+    'El timer (IRQ0) venía desenmascarado de fábrica; sin manejador instalado, la primera interrupción de timer causó una excepción sin manejar → triple fault.'
+  );
+  await askMC(
+    'IDT',
+    '¿Qué le indica cada entrada de la IDT a la CPU?',
+    ['El nombre del proceso actual','El tamaño de la memoria RAM','Qué función ejecutar para un número de interrupción dado','La contraseña del sistema'], 2,
+    'Cada entrada de la IDT asocia un número de interrupción con la dirección de la función que debe manejarla.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, el driver de teclado completo.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'Scancode',
+    '¿Qué indica que el bit más alto (bit 7) de un scancode esté en 1?',
+    ['Que la tecla se presionó','Que la tecla se soltó (break code)','Que es una tecla especial como Shift','Que hubo un error de teclado'], 1,
+    'Un bit 7 en 1 indica un "break code" — la tecla se soltó. Nuestro driver los ignora y solo procesa cuando se presiona.'
+  );
+  await askMC(
+    'Interrupt attribute',
+    '¿Por qué hubo que agregar -mgeneral-regs-only al compilar keyboard.c?',
+    ['Porque un manejador de interrupción no puede usar instrucciones de punto flotante/SSE','Para reducir un poco el tamaño del binario final','Simplemente para que la compilación sea más rápida','No hizo falta agregar ningún flag adicional'], 0,
+    'GCC no puede garantizar guardar/restaurar el estado de FPU/SSE dentro de un manejador de interrupción — por eso exige generar código solo con registros de propósito general.'
+  );
+  await askMC(
+    'EOI',
+    '¿Qué pasa si el driver de teclado NO llama a pic_enviar_eoi()?',
+    ['El teclado deja de escribir mayúsculas','Se reinicia la VM','Nada, es opcional','El PIC no vuelve a mandar más interrupciones de ningún tipo'], 3,
+    'Sin el End Of Interrupt, el PIC asume que la interrupción sigue "en curso" y no entrega ninguna interrupción nueva — ni siquiera de otro dispositivo.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase 10 completa!', text:'Unidad 6 cerrada — nos vemos en la próxima sesión: integración final del proyecto.'});
+}
+</script>
+</body>
+</html>

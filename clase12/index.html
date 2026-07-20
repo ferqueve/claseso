@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 12 — Algoritmos de Planificación</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f; --bg-1:#0d131b; --bg-2:#121a24; --panel-border:#1f2b38;
+  --green:#39ff88; --green-dim:#1f8a52; --amber:#ffb454; --cyan:#5ccfe6;
+  --magenta:#e64980; --magenta-dim:#7a2648; --red:#ff5c7a;
+  --text:#dbe4ea; --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace; --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:
+    radial-gradient(ellipse at top left, rgba(230,73,128,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text); font-family:var(--display); overflow:hidden; height:100vh;
+}
+::selection{ background:var(--magenta); color:#1c0510; }
+.crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:500; background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; }
+
+.statusbar{ position:fixed; top:0; left:0; right:0; height:42px; z-index:200; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75)); border-bottom:1px solid var(--panel-border); font-family:var(--mono); font-size:12.5px; color:var(--text-dim); }
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--magenta); box-shadow:0 0 6px var(--magenta); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--magenta-dim), var(--magenta)); box-shadow:0 0 8px var(--magenta); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{ font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--magenta); display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--magenta); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative; }
+.panel::before{ content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, rgba(230,73,128,.4), transparent); }
+.term-tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px; background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px; }
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#7a2648; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3.2rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--magenta); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:16px; transition:transform .2s, border-color .2s; }
+.card-min:hover{ transform:translateY(-3px); border-color:var(--magenta-dim); }
+.card-min i{ color:var(--cyan); font-size:1.2rem; margin-bottom:6px; display:block; }
+.card-min h4{ font-size:.95rem; margin-bottom:3px; }
+.card-min p{ font-size:.8rem; color:var(--text-dim); margin:0; }
+
+table.cmp{ width:100%; border-collapse:collapse; font-size:.88rem; }
+table.cmp th{ font-family:var(--mono); text-transform:uppercase; font-size:.7rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.cmp td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+
+.gantt{ display:flex; font-family:var(--mono); font-size:.78rem; margin:14px 0; border:1px solid var(--panel-border); border-radius:4px; overflow:hidden; }
+.gantt div{ display:flex; align-items:center; justify-content:center; height:44px; color:#04120a; font-weight:700; border-right:1px solid rgba(0,0,0,.2); }
+.gantt-labels{ display:flex; font-family:var(--mono); font-size:.7rem; color:var(--text-dim); margin-top:4px; }
+
+.code-block{ background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px; font-family:var(--mono); font-size:.8rem; color:var(--cyan); overflow-x:auto; white-space:pre; }
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-magenta{ color:var(--magenta); }
+
+.btn-quiz{ background:transparent; border:1px solid var(--magenta-dim); color:var(--magenta); font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s; }
+.btn-quiz:hover{ background:var(--magenta); color:#1c0510; }
+
+.nav-btn{ position:fixed; top:50%; transform:translateY(-50%); z-index:150; width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border); background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; backdrop-filter:blur(3px); }
+.nav-btn:hover{ color:var(--magenta); border-color:var(--magenta-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--magenta); box-shadow:0 0 6px var(--magenta); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--magenta) !important; }
+
+@media (max-width: 768px){ .mega{ font-size:1.8rem; } h1.title{ font-size:1.5rem; } .slide{ padding:24px 20px 90px 20px; } .mod-num{ display:none; } }
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-regular fa-clock"></i> <span id="clockLabel">18:15 – 19:35</span></div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria', clock: opts.clock || ''});
+}
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Retomando sesión ...................... clase_12.iso</div>
+    <div>[ <span class="ok">OK</span> ] Cargando algoritmos .................... FIFO, SJF, prioridades</div>
+    <div>[ <span class="ok">OK</span> ] Comparando con nuestro round-robin</div>
+  </div>
+  <div class="eyebrow">boot sequence · clase 12</div>
+  <h1 class="mega">Algoritmos de<br><span class="kernel">Planificación</span></h1>
+  <h2 class="subtitle" style="margin-top:1rem;">El hueco que faltaba: cómo decidir quién va primero</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">repaso + agenda</div>
+  <h1 class="title">Round-robin no es <span class="accent">el único</span> algoritmo</h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>En la Clase 5 implementamos round-robin: todos los procesos LISTOS, en cola circular, sin prioridades.</li>
+      <li>Pero el documento oficial del curso menciona varios algoritmos más — hoy cerramos ese hueco.</li>
+    </ul>
+  </div>
+  <div class="grid-cards" style="margin-top:18px;">
+    <div class="card-min">
+      <i class="fa-solid fa-ruler"></i>
+      <h4 class="accent-cyan">Módulo 1 · 18:15–19:35</h4>
+      <p>Criterios para evaluar un scheduler, y los algoritmos FIFO y SJF. <b>Teoría.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-ranking-star"></i>
+      <h4 class="accent-amber">Módulo 2 · 19:45–21:00</h4>
+      <p>Prioridades, el problema de la inanición, y comparar todo contra nuestro round-robin. <b>Práctica.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-stopwatch"></i>
+      <h4 class="accent-amber">Módulo 3 · 21:05–22:30</h4>
+      <p>Planificación en tiempo real y el gancho hacia multitarea preventiva. <b>Práctica + quiz.</b></p>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">antes de comparar algoritmos</div>
+  <h1 class="title">¿Cómo se mide si un scheduler es <span class="accent">bueno</span>?</h1>
+  <div class="panel">
+    <p>No hay un algoritmo "mejor" en abstracto — depende de qué criterio te importa más. Estos son los 4 más comunes:</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-hourglass-half"></i><h4>Tiempo de espera</h4><p>Cuánto espera un proceso en la cola antes de correr</p></div>
+    <div class="card-min"><i class="fa-solid fa-bolt"></i><h4>Tiempo de respuesta</h4><p>Cuánto tarda en obtener la CPU por primera vez</p></div>
+    <div class="card-min"><i class="fa-solid fa-gauge-high"></i><h4>Throughput</h4><p>Cuántos procesos terminan por unidad de tiempo</p></div>
+    <div class="card-min"><i class="fa-solid fa-scale-balanced"></i><h4>Equidad (fairness)</h4><p>Que ningún proceso quede esperando para siempre</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">el más simple de todos</div>
+  <h1 class="title">FIFO <span class="accent">/ FCFS</span></h1>
+  <div class="panel">
+    <p><b>First In, First Out</b> (o First Come, First Served): el que llega primero, corre primero — hasta que termina. Sin interrupciones, sin prioridades.</p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">ejemplo: 3 procesos que llegan juntos</div>
+    <p style="margin:0 0 8px 0; font-family:var(--mono); font-size:.85rem;">P1 dura 8, P2 dura 4, P3 dura 2 (unidades de tiempo)</p>
+    <div class="gantt">
+      <div style="background:var(--cyan); flex:8;">P1</div>
+      <div style="background:var(--amber); flex:4;">P2</div>
+      <div style="background:var(--green); flex:2;">P3</div>
+    </div>
+    <div class="gantt-labels"><span style="flex:8;">0</span><span style="flex:4;">8</span><span style="flex:2;">12</span><span>14</span></div>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">el problema</div>
+    <p style="margin:0;">P3 (que dura solo 2) tiene que esperar a que terminen P1 y P2 (12 unidades) aunque sea el más corto. Tiempo de espera promedio: (0+8+12)/3 = <b>6.67</b>.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">el más corto primero</div>
+  <h1 class="title">SJF <span class="accent">(Shortest Job First)</span></h1>
+  <div class="panel">
+    <p>En vez de respetar el orden de llegada, SJF elige siempre el proceso con <b>menor duración restante</b>. Con los mismos 3 procesos de antes (P1=8, P2=4, P3=2):</p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="gantt">
+      <div style="background:var(--green); flex:2;">P3</div>
+      <div style="background:var(--amber); flex:4;">P2</div>
+      <div style="background:var(--cyan); flex:8;">P1</div>
+    </div>
+    <div class="gantt-labels"><span style="flex:2;">0</span><span style="flex:4;">2</span><span style="flex:8;">6</span><span>14</span></div>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--green);">
+    <div class="term-tag" style="border-color:var(--green); color:var(--green);">la mejora</div>
+    <p style="margin:0;">Tiempo de espera promedio: (0+2+6)/3 = <b>2.67</b> — mucho mejor que FIFO (6.67). SJF es matemáticamente <b>óptimo</b> para minimizar la espera promedio.</p>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">pero...</div>
+    <p style="margin:0;">¿Qué pasa si sigue llegando un proceso corto detrás de otro? Un proceso largo puede esperar <b>para siempre</b> — esto se llama <b>inanición</b> (starvation).</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-ruler accent"></i> Antes de seguir con prioridades...</h1>
+  <p class="subtitle">Repasemos criterios, FIFO y SJF</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">Prioridades y<br><span class="kernel" style="color:var(--amber);">nuestro Round-Robin</span></h1>
+  <h2 class="subtitle">Dónde encaja lo que ya construimos</h2>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">un criterio más, no solo duración</div>
+  <h1 class="title">Planificación por <span class="accent-amber">prioridades</span></h1>
+  <div class="panel">
+    <p>Cada proceso recibe un número de prioridad; el scheduler siempre elige al de mayor prioridad entre los LISTOS. SJF es, en el fondo, un caso particular: "prioridad = duración restante, al revés".</p>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">el mismo problema de siempre</div>
+    <p style="margin:0;">Un proceso de baja prioridad puede quedarse esperando para siempre si siguen llegando procesos de mayor prioridad — inanición otra vez.</p>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--green);">
+    <div class="term-tag" style="border-color:var(--green); color:var(--green);">la solución clásica: aging</div>
+    <p style="margin:0;">"Envejecer" la prioridad: cuanto más tiempo espera un proceso, más va subiendo su prioridad automáticamente — hasta que en algún momento le toca correr sí o sí.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">volviendo a lo nuestro</div>
+  <h1 class="title">¿Dónde encaja <span class="accent-amber">round-robin</span>?</h1>
+  <div class="panel">
+    <table class="cmp">
+      <tr><th>Algoritmo</th><th>Ventaja principal</th><th>Problema principal</th></tr>
+      <tr><td>FIFO</td><td>Simplicidad total</td><td>Procesos cortos esperan detrás de largos</td></tr>
+      <tr><td>SJF</td><td>Espera promedio óptima</td><td>Inanición de procesos largos</td></tr>
+      <tr><td>Prioridades</td><td>Procesos importantes van primero</td><td>Inanición de baja prioridad (sin aging)</td></tr>
+      <tr><td><b>Round-robin (el nuestro)</b></td><td><b>Nadie espera más que un "quantum" por vuelta</b></td><td><b>No distingue procesos urgentes de los que no lo son</b></td></tr>
+    </table>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">por qué elegimos round-robin para el kernel de juguete</div>
+    <p style="margin:0;">Es el que mejor garantiza <b>equidad</b> sin necesitar conocer de antemano cuánto va a durar cada proceso (algo que SJF necesita saber, y que en la práctica es casi imposible de predecir con exactitud).</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">ejercicio · calculalo vos</div>
+  <h1 class="title">Practicá con <span class="accent-amber">otro conjunto</span></h1>
+  <div class="panel">
+    <p>4 procesos llegan al mismo tiempo: P1 dura 6, P2 dura 2, P3 dura 8, P4 dura 3.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// para resolver a mano:</span>
+<span class="c-magenta">1.</span> Ordená los procesos según FIFO (orden de llegada: P1, P2, P3, P4)
+    y calculá el tiempo de espera de cada uno.
+
+<span class="c-magenta">2.</span> Ahora ordenalos según SJF (de menor a mayor duración)
+    y volvé a calcular.
+
+<span class="c-magenta">3.</span> Compará el tiempo de espera PROMEDIO en los dos casos.
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">para el equipo</div>
+    <p style="margin:0;">Este es un buen ejercicio para el parcial: practiquen construyendo el diagrama de Gantt a mano antes de calcular los tiempos.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-ranking-star accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Sobre prioridades, aging y round-robin</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">Planificación en<br><span class="kernel">Tiempo Real</span></h1>
+  <h2 class="subtitle">Cuando "eventualmente" no alcanza</h2>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">un mundo distinto</div>
+  <h1 class="title">Cuando hay que llegar <span class="accent">a tiempo, sí o sí</span></h1>
+  <div class="panel">
+    <p>En un sistema de propósito general, "eventualmente" le toca a cada proceso. En un sistema de <b>tiempo real</b>, cada tarea tiene un <b>deadline</b>: si no se cumple, hay una falla — a veces catastrófica (pensá en el airbag de un auto, o el control de un avión).</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-clock-rotate-left"></i><h4>Rate Monotonic</h4><p>A tareas que se repiten más seguido, se les da más prioridad</p></div>
+    <div class="card-min"><i class="fa-solid fa-flag-checkered"></i><h4>EDF (Earliest Deadline First)</h4><p>Siempre corre primero la tarea cuyo deadline está más cerca</p></div>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">el gancho con nuestro kernel</div>
+  <h1 class="title">¿Podríamos hacer esto en el <span class="accent">toy-os</span>?</h1>
+  <div class="panel">
+    <p>Nuestro scheduler round-robin es <b>cooperativo</b>: un proceso que nunca hace <code>proceso_yield()</code> bloquea a todos los demás — imposible garantizar ningún deadline así.</p>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">lo que haría falta</div>
+    <ul class="checklist">
+      <li>Multitarea <b>preventiva</b> (usando el PIT/temporizador, como vimos en el Trabajo de Investigación)</li>
+      <li>Un campo de <code>deadline</code> o <code>periodo</code> en el PCB de cada proceso</li>
+      <li>Reemplazar <code>planificador()</code> por una versión que elija según EDF o Rate Monotonic, no round-robin puro</li>
+    </ul>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">para el equipo</div>
+    <p style="margin:0;">Esto conecta directo con el Punto 4 del trabajo de investigación (multitarea preventiva) — es una extensión real y ambiciosa para el obligatorio.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase 12</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre de la clase</h1>
+  <p class="subtitle">Últimas preguntas antes de irnos</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:2.6rem;">Ya no falta<br><span class="kernel">ningún algoritmo</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">repaso final del curso</div>
+    <ul class="checklist">
+      <li>FIFO: simple, pero los cortos esperan detrás de los largos</li>
+      <li>SJF: óptimo en promedio, pero puede generar inanición</li>
+      <li>Prioridades + aging: importantes primero, sin dejar a nadie esperando para siempre</li>
+      <li>Round-robin (el nuestro): la elección más equitativa para un kernel de juguete</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Curso completo — las 7 unidades, cubiertas.</div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{ el.classList.toggle('active', i===current); });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{ d.classList.toggle('on', i===current); });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  document.getElementById('clockLabel').textContent = s.clock;
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+function goTo(i){ if(i<0 || i>=slides.length) return; current = i; render(); }
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{ if(e.key === 'ArrowRight') goTo(current+1); if(e.key === 'ArrowLeft') goTo(current-1); });
+render();
+
+const swalBase = { background: 'var(--bg-1)', color: 'var(--text)', customClass: { popup: 'so-popup', title: 'so-title' }, confirmButtonColor: '#e64980', cancelButtonColor: '#6d7c8c' };
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({ ...swalBase, title, html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`, input: 'radio', inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])), inputValidator: (v)=> !v && '¡Elegí una opción!', confirmButtonText: 'Responder' });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({ ...swalBase, icon: correct ? 'success' : 'error', title: correct ? '¡Correcto!' : 'No exactamente...', html: `<p style="color:var(--text-dim);">${explain}</p>`, confirmButtonText: 'Seguir' });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Criterios',
+    '¿Qué mide el "throughput" de un scheduler?',
+    ['Cuánto espera un proceso en la cola','Cuántos procesos terminan por unidad de tiempo','Cuánto tarda en responder por primera vez','Qué tan justo es con todos los procesos'], 1,
+    'El <b>throughput</b> mide cuántos procesos logra completar el sistema en un período de tiempo dado.'
+  );
+  await askMC(
+    'FIFO',
+    '¿Cuál es el problema principal de FIFO?',
+    ['Es muy difícil de implementar','Un proceso corto puede quedar esperando detrás de uno muy largo','Nunca termina ningún proceso','Requiere conocer el futuro'], 1,
+    'Como respeta estrictamente el orden de llegada, un proceso corto puede quedar atascado esperando a uno mucho más largo que llegó antes.'
+  );
+  await askMC(
+    'SJF',
+    '¿Por qué se dice que SJF es "óptimo"?',
+    ['Porque es el más fácil de programar','Porque minimiza el tiempo de espera promedio de todos los procesos','Porque nunca genera inanición','Porque no necesita conocer la duración de los procesos'], 1,
+    'SJF minimiza matemáticamente el tiempo de espera promedio — ningún otro orden de ejecución da un promedio menor.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora, prioridades y nuestro round-robin.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'Prioridades',
+    '¿Qué problema comparten SJF y la planificación por prioridades sin aging?',
+    ['Ambos son imposibles de implementar','Ambos pueden generar inanición de ciertos procesos','Ambos requieren interrupciones de hardware','Ninguno de los dos funciona con más de 2 procesos'], 1,
+    'Los dos pueden dejar esperando indefinidamente a un proceso (largo en SJF, de baja prioridad en prioridades) si siguen llegando otros "mejor calificados".'
+  );
+  await askMC(
+    'Aging',
+    '¿Qué hace la técnica de "aging"?',
+    ['Elimina procesos viejos del sistema','Va subiendo la prioridad de un proceso cuanto más tiempo espera','Acelera la CPU con el tiempo','Reduce la duración de los procesos largos'], 1,
+    'El "envejecimiento" incrementa gradualmente la prioridad de un proceso que lleva mucho tiempo esperando, garantizando que en algún momento le toque correr.'
+  );
+  await askMC(
+    'Round-robin',
+    '¿Cuál es la ventaja principal de round-robin frente a los otros algoritmos vistos?',
+    ['Siempre termina los procesos más rápido que cualquier otro','Garantiza que nadie espere más de un "quantum" por vuelta, sin necesitar conocer duraciones','Es el único que puede usarse con más de 2 procesos','No necesita ningún tipo de scheduler'], 1,
+    'Round-robin no necesita saber cuánto va a durar cada proceso de antemano, y asegura una espera acotada por vuelta — es la opción más equitativa entre las vistas.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, planificación en tiempo real.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'Tiempo real',
+    '¿Qué es un "deadline" en un sistema de tiempo real?',
+    ['El nombre del proceso más importante','El momento límite en que una tarea debe completarse, o se considera una falla','El tiempo que tarda en compilar el kernel','Un tipo de interrupción de hardware'], 1,
+    'Un deadline es el límite de tiempo que una tarea tiene para completarse — no cumplirlo se considera una falla del sistema, a veces grave.'
+  );
+  await askMC(
+    'EDF',
+    '¿Qué tarea elige primero el algoritmo EDF (Earliest Deadline First)?',
+    ['La que llegó primero','La que tiene el deadline más próximo','La de mayor duración','La que menos CPU usó hasta el momento'], 1,
+    'EDF siempre prioriza la tarea cuyo deadline está más cerca de cumplirse, sin importar cuándo llegó ni cuánto dura.'
+  );
+  await askMC(
+    'Nuestro kernel',
+    '¿Por qué nuestro scheduler round-robin cooperativo NO podría garantizar deadlines de tiempo real tal como está?',
+    ['Porque round-robin es demasiado lento en general','Porque un proceso que nunca cede la CPU voluntariamente bloquea a todos los demás indefinidamente','Porque no soporta más de 4 procesos','Porque no usa semáforos'], 1,
+    'Al ser cooperativo, no hay ninguna garantía de que un proceso ceda la CPU a tiempo — haría falta multitarea preventiva (temporizador) para dar esas garantías.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase 12 completa!', text:'Con esto, las 7 unidades del curso quedan cubiertas.'});
+}
+</script>
+</body>
+</html>

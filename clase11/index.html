@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 11 — Integración Final</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --cyan:#5ccfe6;
+  --iris:#8b7fd6;
+  --iris-dim:#4a4380;
+  --red:#ff5c7a;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(139,127,214,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+  overflow:hidden;
+  height:100vh;
+}
+::selection{ background:var(--iris); color:#0c0a1a; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:fixed; top:0; left:0; right:0; height:42px; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-dim);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--iris); box-shadow:0 0 6px var(--iris); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--iris-dim), var(--iris)); box-shadow:0 0 8px var(--iris); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--iris); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.5rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.1rem; font-weight:400; color:var(--text-dim); margin-bottom:1.6rem; }
+.accent{ color:var(--iris); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative;
+}
+.panel::before{
+  content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(139,127,214,.4), transparent);
+}
+.term-tag{
+  font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px;
+  background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px;
+}
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12.5px; color:#443f6b; margin-bottom:26px; line-height:1.9; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3.2rem; font-weight:700; line-height:1.05; margin:0; }
+.mega .kernel{ color:var(--iris); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:9px 0 9px 30px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1.02rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:9px; font-size:.85rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:16px; transition:transform .2s, border-color .2s; position:relative; }
+.card-min:hover{ transform:translateY(-3px); border-color:var(--iris-dim); }
+.card-min i{ color:var(--cyan); font-size:1.15rem; margin-bottom:6px; display:block; }
+.card-min h4{ font-size:.92rem; margin-bottom:3px; }
+.card-min p{ font-size:.8rem; color:var(--text-dim); margin:0; }
+.unit-tag{ font-family:var(--mono); font-size:.62rem; position:absolute; top:9px; right:9px; padding:1px 5px; border-radius:3px; border:1px solid currentColor; }
+
+.arch-map{ display:flex; flex-direction:column; gap:2px; }
+.arch-row{ display:grid; grid-template-columns:90px 1fr; align-items:center; gap:12px; }
+.arch-label{ font-family:var(--mono); font-size:.75rem; color:var(--text-dim); text-align:right; }
+.arch-track{ background:var(--bg-2); border-radius:4px; height:26px; position:relative; overflow:hidden; border:1px solid var(--panel-border); display:flex; align-items:center; padding-left:10px; font-family:var(--mono); font-size:.73rem; color:#0c0a1a; }
+
+table.rubric{ width:100%; border-collapse:collapse; font-size:.88rem; }
+table.rubric th{ font-family:var(--mono); text-transform:uppercase; font-size:.7rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:8px 10px; text-align:left; }
+table.rubric td{ padding:9px 10px; border-bottom:1px solid var(--panel-border); }
+
+.code-block{
+  background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:.78rem; color:var(--cyan); overflow-x:auto; white-space:pre;
+}
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-iris{ color:var(--iris); }
+
+.btn-quiz{
+  background:transparent; border:1px solid var(--iris-dim); color:var(--iris);
+  font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s;
+}
+.btn-quiz:hover{ background:var(--iris); color:#0c0a1a; }
+
+.nav-btn{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:150;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border);
+  background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:.2s; backdrop-filter:blur(3px);
+}
+.nav-btn:hover{ color:var(--iris); border-color:var(--iris-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--iris); box-shadow:0 0 6px var(--iris); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--iris) !important; }
+
+@media (max-width: 768px){
+  .mega{ font-size:1.8rem; }
+  h1.title{ font-size:1.5rem; }
+  .slide{ padding:24px 20px 90px 20px; }
+  .mod-num{ display:none; }
+}
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-regular fa-clock"></i> <span id="clockLabel">18:15 – 19:35</span></div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria', clock: opts.clock || ''});
+}
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Ensamblando proyecto completo .......... boot + kernel + drivers</div>
+    <div>[ <span class="ok">OK</span> ] Verificando integración ................ 10 clases, 1 solo kernel</div>
+    <div>[ <span class="ok">OK</span> ] Preparando defensa del obligatorio</div>
+  </div>
+  <div class="eyebrow">boot sequence · clase 11</div>
+  <h1 class="mega">Integración<br><span class="kernel">Final</span></h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Unidad 7: todo lo construido, junto y funcionando</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">repaso + agenda</div>
+  <h1 class="title">De 10 clases <span class="accent">sueltas</span> a <span class="accent-amber">un solo proyecto</span></h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>Cada clase agregó una pieza: arranque, C, procesos, sincronización, memoria, archivos, interbloqueos, teclado.</li>
+      <li>Hoy: verlo todo junto, entender qué se espera entregar, y prepararse para la defensa.</li>
+    </ul>
+  </div>
+  <div class="grid-cards" style="margin-top:18px;">
+    <div class="card-min">
+      <i class="fa-solid fa-diagram-project"></i>
+      <h4 class="accent-cyan">Módulo 1 · 18:15–19:35</h4>
+      <p>El mapa completo de la arquitectura, de punta a punta. <b>Teoría.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-clipboard-check"></i>
+      <h4 class="accent-amber">Módulo 2 · 19:45–21:00</h4>
+      <p>Qué se espera del obligatorio, checklist mínimo y extensiones posibles. <b>Práctica.</b></p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-play"></i>
+      <h4 class="accent-amber">Módulo 3 · 21:05–22:30</h4>
+      <p>Demo integradora completa en QEMU + quiz final del curso. <b>Práctica + quiz.</b></p>
+    </div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">arquitectura completa</div>
+  <h1 class="title">El <span class="accent">viaje</span> de un byte, de la BIOS a tu pantalla</h1>
+  <div class="panel">
+    <div class="arch-map">
+      <div class="arch-row"><div class="arch-label">C3-4</div><div class="arch-track" style="background:var(--iris);">BIOS → 0x7c00 → lee kernel → GDT → modo protegido → kmain()</div></div>
+      <div class="arch-row"><div class="arch-label">C5</div><div class="arch-track" style="background:var(--cyan);">PCB + scheduler round-robin cooperativo (switch.asm)</div></div>
+      <div class="arch-row"><div class="arch-label">C6</div><div class="arch-track" style="background:var(--green);">Semáforos protegiendo secciones críticas entre procesos</div></div>
+      <div class="arch-row"><div class="arch-label">C7</div><div class="arch-track" style="background:var(--amber);">kmalloc/kfree — memoria dinámica sobre el heap del kernel</div></div>
+      <div class="arch-row"><div class="arch-label">C8</div><div class="arch-track" style="background:#e07856;">Sistema de archivos sobre disco simulado en RAM</div></div>
+      <div class="arch-row"><div class="arch-label">C9</div><div class="arch-track" style="background:#c24a5a;">Prevención de interbloqueos (orden de adquisición de recursos)</div></div>
+      <div class="arch-row"><div class="arch-label">C10</div><div class="arch-track" style="background:#9ee85a;">PIC + IDT + driver de teclado por interrupciones</div></div>
+    </div>
+  </div>
+  <p style="color:var(--text-dim); font-family:var(--mono); font-size:.78rem; margin-top:10px;">
+    Todo esto ya vive junto en un solo repositorio: <code>toy-os.zip</code>.
+  </p>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">por qué importa la integración</div>
+  <h1 class="title">Un SO no es la <span class="accent">suma</span> de sus partes</h1>
+  <div class="panel">
+    <p style="font-size:1.02rem; line-height:1.7;">
+      Cada pieza que construimos funciona sola, pero un sistema operativo real vive de las
+      <b>interacciones entre piezas</b>: el scheduler cambia de proceso justo en medio de un
+      <code>kmalloc()</code>; el driver de teclado interrumpe a un proceso mientras espera un semáforo;
+      el sistema de archivos necesita memoria dinámica para sus buffers. Los bugs más interesantes
+      (¡y los que encontramos en este curso!) aparecen ahí, en el cruce.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-bug"></i><h4>Bug real #1</h4><p>Cambio de contexto sin pushad/popad corrompía registros entre procesos</p></div>
+    <div class="card-min"><i class="fa-solid fa-bug"></i><h4>Bug real #2</h4><p>PIC sin enmascarar el timer causaba un triple fault</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-diagram-project accent"></i> Antes de ver los requisitos...</h1>
+  <p class="subtitle">Repasemos la arquitectura completa</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria', clock:'18:15 – 19:35'});
+
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">¿Qué hay que<br><span class="kernel" style="color:var(--amber);">entregar</span>?</h1>
+  <h2 class="subtitle">Checklist mínimo y extensiones para el obligatorio</h2>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">checklist mínimo</div>
+  <h1 class="title">Lo que <span class="accent-amber">todo equipo</span> tiene que mostrar</h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>El kernel arranca en QEMU (y, idealmente, en VirtualBox) sin intervención manual</li>
+      <li>Crea y planifica al menos 2 procesos con el scheduler round-robin</li>
+      <li>Al menos una sección crítica protegida con semáforos, sin condiciones de carrera</li>
+      <li>Memoria dinámica funcionando (kmalloc/kfree) usada por otra parte del kernel</li>
+      <li>El sistema de archivos simulado puede crear, escribir y leer al menos un archivo</li>
+      <li>El teclado responde por interrupciones (no por polling)</li>
+    </ul>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">de la bibliografía del curso</div>
+    <p style="margin:0;">Como en cualquier entrega grupal: <b>todos los integrantes del equipo deben poder explicar en detalle</b> cualquier parte del código entregado — no alcanza con que solo uno lo entienda.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">para ir más lejos</div>
+  <h1 class="title">El <span class="accent-amber">menú de extensiones</span></h1>
+  <div class="grid-cards">
+    <div class="card-min" style="border-color:#8a3f26;">
+      <span class="unit-tag" style="color:#ff7d59;">C7</span>
+      <i class="fa-solid fa-shuffle" style="color:#ff7d59;"></i>
+      <h4>Proteger el allocator</h4>
+      <p>kmalloc/kfree con un semáforo (Clase 7)</p>
+    </div>
+    <div class="card-min" style="border-color:#8a3f26;">
+      <span class="unit-tag" style="color:#ff7d59;">C8</span>
+      <i class="fa-solid fa-trash" style="color:#ff7d59;"></i>
+      <h4>fs_borrar()</h4>
+      <p>Liberar archivos y reutilizar sus bloques</p>
+    </div>
+    <div class="card-min" style="border-color:#8a2f6d;">
+      <span class="unit-tag" style="color:#ff6ec7;">C6</span>
+      <i class="fa-solid fa-people-group" style="color:#ff6ec7;"></i>
+      <h4>Lectores-escritores</h4>
+      <p>El problema clásico, resuelto con semáforos reales</p>
+    </div>
+    <div class="card-min" style="border-color:#0f7a6d;">
+      <span class="unit-tag" style="color:#2dd4bf;">C5</span>
+      <i class="fa-solid fa-ranking-star" style="color:#2dd4bf;"></i>
+      <h4>Prioridades</h4>
+      <p>Scheduler con 2+ niveles en vez de FIFO circular puro</p>
+    </div>
+    <div class="card-min" style="border-color:#6b2530;">
+      <span class="unit-tag" style="color:#c24a5a;">C9</span>
+      <i class="fa-solid fa-magnifying-glass" style="color:#c24a5a;"></i>
+      <h4>Detección de interbloqueos</h4>
+      <p>Un detector de ciclos, en vez de solo prevención</p>
+    </div>
+    <div class="card-min" style="border-color:#537a30;">
+      <span class="unit-tag" style="color:#9ee85a;">C10</span>
+      <i class="fa-solid fa-hourglass" style="color:#9ee85a;"></i>
+      <h4>Multitarea preventiva</h4>
+      <p>Usar el PIT (timer) para forzar cambios de contexto</p>
+    </div>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">cómo se evalúa</div>
+  <h1 class="title">Presentación <span class="accent-amber">técnica</span> y defensa</h1>
+  <div class="panel">
+    <table class="rubric">
+      <tr><th>Criterio</th><th>Qué se evalúa</th></tr>
+      <tr><td>Funcionamiento</td><td>Corre de verdad en QEMU/VirtualBox, sin errores de compilación ni crashes</td></tr>
+      <tr><td>Comprensión</td><td>Cualquier integrante puede explicar cualquier parte del código, sin excepción</td></tr>
+      <tr><td>Argumentación técnica</td><td>Justificar decisiones de diseño (por qué ese algoritmo, esa estructura)</td></tr>
+      <tr><td>Alcance</td><td>Checklist mínimo cumplido + extensiones elegidas del menú (o propias)</td></tr>
+    </table>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">tip para la defensa</div>
+    <p style="margin:0;">Practiquen mostrando un bug que encontraron y cómo lo solucionaron — como los 2 bugs reales de este curso. Es la mejor evidencia de que entendieron el sistema, no solo lo copiaron.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-clipboard-check accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Sobre los requisitos del obligatorio</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · práctica</div>
+  <h1 class="mega" style="font-size:2.8rem;">La demo<br><span class="kernel">integradora</span></h1>
+  <h2 class="subtitle">Todo el kernel, corriendo junto, en QEMU real</h2>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">demo · make run</div>
+  <h1 class="title">Lo que vas a ver en <span class="accent">pantalla</span></h1>
+  <div class="code-block">
+<span class="c-green">Hello from C kernel!</span>          <span class="c-dim">← Clase 4: kernel.c arrancó</span>
+<span class="c-green">OK</span>                             <span class="c-dim">← Clase 7: kmalloc/kfree funcionando</span>
+<span class="c-green">Hola FS</span>                        <span class="c-dim">← Clase 8: sistema de archivos</span>
+<span class="c-green">Escribi algo: </span><span class="c-amber">hola</span>          <span class="c-dim">← Clase 10: teclado por interrupciones</span>
+
+<span class="c-iris">A A A A A</span>                      <span class="c-dim">← Clase 5/6: proceso A, planificado y sincronizado</span>
+<span class="c-iris">B B B B B</span>                      <span class="c-dim">← Clase 5/6: proceso B, alternando sin corromper datos</span>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">un solo comando</div>
+    <p style="margin:0;"><code>make run</code> — todo el pipeline (ensamblar, compilar, linkear, convertir a binario, armar la imagen de disco) pasa por ese único comando, gracias al Makefile que fuimos armando clase a clase.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">antes de la defensa</div>
+  <h1 class="title">Preguntas que <span class="accent">seguro les van a hacer</span></h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li>¿Por qué el bootloader necesita leer el kernel del disco ANTES de pasar a modo protegido?</li>
+      <li>¿Qué pasaría si sacan el <code>pushad</code>/<code>popad</code> del cambio de contexto?</li>
+      <li>¿Cómo evitan que dos procesos corrompan la free-list del allocator al mismo tiempo?</li>
+      <li>¿Qué condición de Coffman rompe su estrategia de prevención de interbloqueos?</li>
+      <li>¿Qué pasa si no le mandan el EOI al PIC después de atender una interrupción?</li>
+    </ul>
+  </div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:5vh;">
+  <div class="eyebrow" style="justify-content:center;">simulacro final del curso</div>
+  <h1 class="title"><i class="fa-solid fa-graduation-cap accent"></i> El gran quiz integrador</h1>
+  <p class="subtitle">Mezclando conceptos de las 11 clases — el nivel de mirada que va a pedir la defensa</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar simulacro</button>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin del curso</div>
+  <h1 class="mega" style="font-size:2.5rem;">De un sector<br>de 512 bytes a <span class="kernel">un SO completo</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">lo que construyeron</div>
+    <ul class="checklist">
+      <li>Un bootloader real que arranca desde cero, sin depender de ningún SO</li>
+      <li>Un kernel en C freestanding con procesos, memoria, archivos y E/S</li>
+      <li>2 bugs reales encontrados y corregidos con evidencia en QEMU — como se hace en la industria</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Curso completo — buena suerte con la defensa.</div>
+</div>
+`, {module:3, mtype:'practica', clock:'21:05 – 22:30'});
+
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{
+    d.classList.toggle('on', i===current);
+  });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  document.getElementById('clockLabel').textContent = s.clock;
+
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+
+function goTo(i){
+  if(i<0 || i>=slides.length) return;
+  current = i;
+  render();
+}
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') goTo(current+1);
+  if(e.key === 'ArrowLeft') goTo(current-1);
+});
+render();
+
+const swalBase = {
+  background: 'var(--bg-1)',
+  color: 'var(--text)',
+  customClass: { popup: 'so-popup', title: 'so-title' },
+  confirmButtonColor: '#8b7fd6',
+  cancelButtonColor: '#6d7c8c',
+};
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({
+    ...swalBase,
+    title,
+    html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`,
+    input: 'radio',
+    inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])),
+    inputValidator: (v)=> !v && '¡Elegí una opción!',
+    confirmButtonText: 'Responder',
+  });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({
+    ...swalBase,
+    icon: correct ? 'success' : 'error',
+    title: correct ? '¡Correcto!' : 'No exactamente...',
+    html: `<p style="color:var(--text-dim);">${explain}</p>`,
+    confirmButtonText: 'Seguir',
+  });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Arquitectura completa',
+    '¿En qué orden ocurren estas 3 cosas al arrancar el kernel?',
+    ['kmain() arranca antes que la BIOS','GDT → BIOS → kmain()','BIOS lee el disco → GDT/modo protegido → kmain()','kmain() → GDT → BIOS'], 2,
+    'El orden real es: la BIOS carga y ejecuta el bootloader, que lee el resto del kernel del disco, arma la GDT y pasa a modo protegido, y recién ahí se llega a kmain().'
+  );
+  await askMC(
+    'Bugs reales del curso',
+    '¿Qué tuvieron en común los 2 bugs reales que encontramos (context switch y PIC)?',
+    ['Que ambos se debían pura y simplemente a falta de RAM','Ambos aparecieron en la interacción entre piezas, no en una pieza aislada','Que ambos eran en realidad problemas exclusivos de QEMU','Que ambos eran simples errores de sintaxis del compilador'], 1,
+    'Los dos bugs eran sutiles precisamente porque cada pieza (el switch, el PIC) "funcionaba" aislada — el problema aparecía al combinarla con el resto del sistema.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora, los requisitos del obligatorio.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'Checklist mínimo',
+    '¿Cuál de estas NO es parte del checklist mínimo del obligatorio?',
+    ['Al menos 2 procesos planificados','Soporte de red con TCP/IP','Una sección crítica protegida con semáforos','Sistema de archivos con crear/escribir/leer'], 1,
+    'Redes y TCP/IP no forman parte del alcance de este curso ni del checklist — el foco está en procesos, memoria, archivos, sincronización y E/S.'
+  );
+  await askMC(
+    'Defensa',
+    '¿Qué se espera de CADA integrante del equipo en la defensa?',
+    ['Que solamente uno del equipo explique todo el código','Que memoricen el código fuente de memoria','Que todos puedan explicar en detalle cualquier parte del código entregado','Que se repartan las preguntas de la defensa por tema'], 2,
+    'Como en cualquier entrega grupal seria: se espera que todos los integrantes puedan explicar cualquier parte del código, no solo quien la escribió.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, la demo integradora completa.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'Mezclando C4 y C10',
+    'Si agregaran un driver de disco real (no simulado), ¿qué clase de mecanismo usarían para no bloquear la CPU esperando datos?',
+    ['Interrupciones, como hicimos con el teclado (Clase 10)','Ninguno, los discos no necesitan mecanismo','Polling constante','Multitarea preventiva'], 0,
+    'Igual que el teclado, un driver de disco real usaría <b>interrupciones</b> para avisar cuando los datos estén listos, en vez de que la CPU pregunte todo el tiempo.'
+  );
+  await askMC(
+    'Mezclando C6 y C9',
+    'Si dos drivers (teclado y disco, por ejemplo) necesitaran el mismo semáforo, ¿qué deberían hacer para evitar un interbloqueo?',
+    ['Deshabilitar las interrupciones para siempre','Usar solo un driver a la vez','Nada, los drivers no pueden interbloquearse','Pedir los semáforos siempre en el mismo orden'], 3,
+    'La misma estrategia de prevención de la Clase 9 (orden consistente de adquisición de recursos) aplica a cualquier par de componentes que compartan recursos, no solo a procesos "de ejemplo".'
+  );
+  await askMC(
+    'Mezclando C5 y C7',
+    '¿Por qué es importante que crear_proceso() reserve la pila del proceso ANTES de que el scheduler lo planifique?',
+    ['Que en realidad no es importante, se puede hacer después','Porque el lenguaje C lo exige de forma obligatoria','Por una simple cuestión de estilo prolijo de código','Porque el cambio de contexto necesita un esp válido para ese proceso desde el primer momento'], 3,
+    'El cambio de contexto (Clase 5) hace popad+ret sobre la pila del proceso desde la primera vez que se lo planifica — esa pila tiene que existir y estar bien armada antes de ese momento.'
+  );
+  await askMC(
+    'Evidencia de comprensión',
+    '¿Cuál es la mejor forma de demostrar en la defensa que entendieron el sistema y no solo lo copiaron?',
+    ['Mostrar un bug que encontraron y cómo lo diagnosticaron y arreglaron','Mostrar solo el resultado final sin explicar el proceso','Repetir las diapositivas de memoria','Leer el código en voz alta'], 0,
+    'Mostrar un bug real, cómo lo diagnosticaron (por ejemplo, con QEMU y dumps de memoria) y cómo lo corrigieron es la evidencia más fuerte de comprensión profunda — exactamente lo que hicimos en este curso.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Curso completo!', text:'Del sector de arranque a un kernel funcionando. Éxitos con la defensa del obligatorio.'});
+}
+</script>
+</body>
+</html>

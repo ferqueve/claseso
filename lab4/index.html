@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Actividad · Elegí el RAID Correcto</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f; --bg-1:#0d131b; --bg-2:#121a24; --panel-border:#1f2b38;
+  --green:#39ff88; --green-dim:#1f8a52; --amber:#ffb454; --red:#ff5c7a;
+  --sand:#d4a373; --sand-dim:#7a5a3a; --cyan:#5ccfe6;
+  --text:#dbe4ea; --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace; --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{min-height:100%;}
+body{
+  margin:0; background:
+    radial-gradient(ellipse at top left, rgba(212,163,115,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text); font-family:var(--display);
+}
+::selection{ background:var(--sand); color:#211505; }
+.crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:500; background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; }
+
+.statusbar{ position:sticky; top:0; z-index:200; height:46px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:linear-gradient(180deg, rgba(13,19,27,0.97), rgba(13,19,27,0.85)); border-bottom:1px solid var(--panel-border); font-family:var(--mono); font-size:12.5px; color:var(--text-dim); backdrop-filter:blur(4px); }
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--sand); box-shadow:0 0 6px var(--sand); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+#progress-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid var(--sand); color:var(--sand); }
+
+.wrap{ max-width:920px; margin:0 auto; padding:36px 20px 100px 20px; }
+
+.hero{ text-align:center; margin-bottom:28px; }
+.eyebrow{ font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--sand); display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; }
+.eyebrow::before, .eyebrow::after{ content:'//'; color:var(--text-dim); }
+h1.mega{ font-size:2.2rem; font-weight:700; margin:0 0 8px 0; }
+h1.mega .accent{ color:var(--sand); }
+.hero p{ color:var(--text-dim); font-size:1rem; max-width:680px; margin:0 auto; }
+
+.panel{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:10px; padding:20px 24px; position:relative; margin-bottom:26px; }
+.panel::before{ content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, rgba(212,163,115,.4), transparent); }
+.term-tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px; background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px; }
+
+table.cheat{ width:100%; border-collapse:collapse; font-size:.82rem; }
+table.cheat th{ font-family:var(--mono); text-transform:uppercase; font-size:.66rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:6px 8px; text-align:left; }
+table.cheat td{ padding:7px 8px; border-bottom:1px solid var(--panel-border); }
+
+.scenario{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:12px; margin-bottom:22px; overflow:hidden; }
+.scenario.solved{ border-color:var(--green-dim); }
+.scenario-head{ display:flex; align-items:center; gap:14px; padding:18px 22px; border-bottom:1px solid var(--panel-border); }
+.scenario-num{ width:38px; height:38px; border-radius:50%; border:2px solid var(--sand-dim); color:var(--sand); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; flex-shrink:0; }
+.scenario.solved .scenario-num{ background:var(--green); border-color:var(--green); color:#04120a; }
+.scenario-head h3{ margin:0; font-size:1.02rem; }
+.scenario-body{ padding:20px 22px 22px 22px; }
+.scenario p.caso{ color:var(--text); line-height:1.65; margin-bottom:16px; font-size:.98rem; background:var(--bg-0); border-left:3px solid var(--sand-dim); padding:12px 16px; border-radius:4px; }
+
+.opciones-raid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin-bottom:14px; }
+.opcion-raid{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:6px; padding:10px; text-align:center; cursor:pointer; font-family:var(--mono); font-size:.82rem; transition:.15s; }
+.opcion-raid:hover{ border-color:var(--sand-dim); }
+.opcion-raid.selected{ border-color:var(--sand); background:rgba(212,163,115,.12); color:var(--sand); }
+
+textarea.justificacion{ width:100%; background:#04070b; border:1px solid var(--panel-border); border-radius:8px; color:var(--cyan); font-family:var(--display); font-size:.9rem; padding:12px 14px; resize:vertical; min-height:80px; outline:none; }
+textarea.justificacion:focus{ border-color:var(--sand); }
+textarea.justificacion::placeholder{ color:var(--text-dim); font-family:var(--display); }
+
+.actions{ display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
+.btn-entregar{ background:var(--sand); border:none; color:#211505; font-family:var(--mono); font-weight:700; border-radius:6px; padding:9px 18px; font-size:.82rem; transition:.2s; }
+.btn-entregar:hover{ background:#e3b98c; }
+
+.feedback{ margin-top:14px; padding:14px 16px; border-radius:8px; font-size:.88rem; line-height:1.6; display:none; }
+.feedback.ok{ background:rgba(57,255,136,.08); border:1px solid var(--green-dim); color:var(--green); display:block; }
+.feedback.bad{ background:rgba(255,92,122,.08); border:1px solid #7a2c3a; color:var(--red); display:block; }
+.feedback .modelo{ margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,.15); color:var(--text-dim); }
+
+.final-panel{ text-align:center; padding:40px 20px; border:1px solid var(--panel-border); border-radius:12px; background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); display:none; }
+.final-panel.show{ display:block; }
+.final-panel i{ font-size:2.4rem; color:var(--green); margin-bottom:12px; display:block; }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.05rem !important; color:var(--sand) !important; }
+#codigo-entrega-final{ margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> ACTIVIDAD · DISCOS Y RAID</div>
+  <div class="seg" id="progress-badge">0 / 6 CASOS RESUELTOS</div>
+</div>
+
+<div class="wrap">
+  <div class="hero animate__animated animate__fadeIn">
+    <div class="eyebrow">práctica de decisión técnica</div>
+    <h1 class="mega">Elegí el <span class="accent">RAID correcto</span></h1>
+    <p>6 casos de empresas reales. Para cada uno, elegí el nivel de RAID más adecuado y escribí tu justificación — después comparala con una justificación modelo.</p>
+  </div>
+
+  <div class="panel">
+    <div class="term-tag">acordate: la ficha rápida</div>
+    <table class="cheat">
+      <tr><th>Nivel</th><th>Cómo funciona</th><th>Ventaja</th><th>Riesgo</th></tr>
+      <tr><td><b>RAID 0</b></td><td>Reparte los datos entre discos (striping)</td><td>Máxima velocidad y espacio</td><td>Sin redundancia — un disco roto pierde TODO</td></tr>
+      <tr><td><b>RAID 1</b></td><td>Duplica los datos en 2 discos (mirroring)</td><td>Simple, tolera 1 fallo</td><td>Solo el 50% del espacio total es útil</td></tr>
+      <tr><td><b>RAID 5</b></td><td>Reparte datos + paridad entre 3+ discos</td><td>Buen balance espacio/redundancia</td><td>Tolera solo 1 fallo simultáneo</td></tr>
+      <tr><td><b>RAID 6</b></td><td>Como RAID 5, con doble paridad</td><td>Tolera 2 fallos simultáneos</td><td>Necesita más discos, algo más lento al escribir</td></tr>
+      <tr><td><b>RAID 10</b></td><td>Combina espejado + striping (mínimo 4 discos)</td><td>Rápido Y redundante</td><td>Caro — solo el 50% del espacio es útil</td></tr>
+      <tr><td><b>Sin RAID</b></td><td>Un solo disco, o discos independientes (JBOD)</td><td>El más barato y simple</td><td>Cero redundancia, cero mejora de velocidad</td></tr>
+    </table>
+  </div>
+
+  <div id="scenarios"></div>
+
+  <div class="final-panel" id="finalPanel">
+    <i class="fa-solid fa-trophy"></i>
+    <h2 style="margin:0 0 8px 0;">¡Resolviste los 6 casos!</h2>
+    <p style="color:var(--text-dim);">Generá tu código de entrega y enviámelo por el canal del curso, junto con tus justificaciones escritas.</p>
+    <button class="btn-entregar" onclick="generarCodigoEntrega()"><i class="fa-solid fa-stamp"></i> Generar código de entrega</button>
+    <div id="codigo-entrega-final"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+<script>
+const solved = new Set();
+const TOTAL = 6;
+const RAID_OPCIONES = ['Sin RAID', 'RAID 0', 'RAID 1', 'RAID 5', 'RAID 6', 'RAID 10'];
+
+function updateProgress(){
+  document.getElementById('progress-badge').textContent = `${solved.size} / ${TOTAL} CASOS RESUELTOS`;
+  if (solved.size === TOTAL){
+    document.getElementById('finalPanel').classList.add('show');
+  }
+}
+function showFeedback(id, type, html){
+  const el = document.getElementById(id);
+  el.className = 'feedback ' + type;
+  el.innerHTML = html;
+}
+
+function seleccionarRaid(n, valor, btn){
+  document.querySelectorAll(`#opciones-${n} .opcion-raid`).forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('seleccion-' + n).value = valor;
+}
+
+function renderOpciones(n){
+  return RAID_OPCIONES.map(o =>
+    `<div class="opcion-raid" onclick="seleccionarRaid(${n}, '${o}', this)">${o}</div>`
+  ).join('');
+}
+
+/* ============================================================
+   Datos de los 6 casos
+   ============================================================ */
+const CASOS = [
+  {
+    titulo: "El banco con el servidor crítico",
+    caso: "Un banco necesita un servidor de base de datos que procese transacciones las 24 horas. No puede permitirse perder ni un segundo de actividad, y la velocidad de lectura/escritura es tan importante como la seguridad de los datos. El presupuesto no es un problema — tienen 4 discos disponibles como mínimo.",
+    correcta: "RAID 10",
+    modelo: "RAID 10 combina espejado (redundancia, tolera fallos) con striping (velocidad) — es la opción típica para bases de datos críticas donde tanto el rendimiento como la disponibilidad son innegociables, y el presupuesto lo permite."
+  },
+  {
+    titulo: "El editor de video con plazo de entrega",
+    caso: "Un editor de video freelance trabaja con archivos enormes de 4K y necesita la máxima velocidad posible para no perder tiempo esperando que se guarden los archivos. Ya tiene una copia de seguridad de todo su material en un disco externo aparte. No le importa si el RAID en sí no tiene redundancia — solo quiere velocidad mientras edita.",
+    correcta: "RAID 0",
+    modelo: "RAID 0 reparte los datos entre discos sin duplicar nada, maximizando la velocidad. Es aceptable acá porque el editor YA tiene un respaldo aparte — el riesgo de perder todo si falla un disco queda cubierto por otro lado."
+  },
+  {
+    titulo: "La oficina chica con presupuesto ajustado",
+    caso: "Una oficina de contadores tiene un solo servidor de archivos con 2 discos disponibles. Quieren que, si se rompe un disco, no se pierda ningún documento — pero no tienen presupuesto para comprar más de 2 discos ni para soluciones complejas.",
+    correcta: "RAID 1",
+    modelo: "Con exactamente 2 discos y el objetivo de no perder datos ante un fallo, RAID 1 (espejado) es la opción más simple y directa: todo se duplica automáticamente, sin necesitar más hardware."
+  },
+  {
+    titulo: "La empresa mediana con servidor de archivos",
+    caso: "Una empresa de 50 empleados tiene un servidor de archivos compartido con 5 discos. Quieren un buen balance entre espacio de almacenamiento aprovechable y protección ante la falla de un disco, sin gastar el doble en discos que no se puedan usar.",
+    correcta: "RAID 5",
+    modelo: "RAID 5 reparte los datos y la paridad entre los discos, aprovechando la capacidad de N-1 discos (con 5 discos, el equivalente a 4 son útiles) y tolerando la falla de 1 disco — el balance clásico entre espacio y redundancia."
+  },
+  {
+    titulo: "El centro de datos con streaming de video",
+    caso: "Un centro de datos aloja un servicio de streaming de video con muchísimos discos en cada servidor. Por la escala del sistema, la probabilidad de que fallen 2 discos casi al mismo tiempo (mientras uno se está reconstruyendo) es real y ya les pasó antes, causando pérdida de datos. Necesitan tolerar hasta 2 fallos simultáneos.",
+    correcta: "RAID 6",
+    modelo: "RAID 6 agrega una segunda paridad respecto a RAID 5, permitiendo tolerar la falla de HASTA 2 discos al mismo tiempo — exactamente el escenario que ya les causó problemas con RAID 5 (un segundo fallo durante la reconstrucción del primero)."
+  },
+  {
+    titulo: "La startup probando un prototipo",
+    caso: "Una startup de 2 personas está probando un prototipo interno que van a tirar en un mes. Tienen una sola laptop con un disco y quieren guardar ahí los datos de prueba mientras desarrollan. No hay presupuesto, no hay urgencia de redundancia, y el proyecto es completamente descartable.",
+    correcta: "Sin RAID",
+    modelo: "No todo problema de almacenamiento necesita RAID. Con un solo disco, presupuesto cero, y datos que ni siquiera importa perder (el prototipo es descartable), montar cualquier esquema de RAID sería una complejidad innecesaria — un disco simple alcanza y sobra."
+  },
+];
+
+function buildEscenario(i){
+  const c = CASOS[i];
+  const n = i + 1;
+  return `
+  <div class="scenario-head"><div class="scenario-num">${n}</div><h3>${c.titulo}</h3></div>
+  <div class="scenario-body">
+    <p class="caso">"${c.caso}"</p>
+    <p style="color:var(--text-dim); font-size:.85rem; margin-bottom:8px;">¿Qué nivel de RAID (o ninguno) elegirías?</p>
+    <div class="opciones-raid" id="opciones-${n}">${renderOpciones(n)}</div>
+    <input type="hidden" id="seleccion-${n}">
+    <p style="color:var(--text-dim); font-size:.85rem; margin-bottom:6px;">Justificá tu elección en 2-4 líneas:</p>
+    <textarea class="justificacion" id="justificacion-${n}" placeholder="Escribí acá por qué elegiste esa opción, pensando en el caso concreto..."></textarea>
+    <div class="actions">
+      <button class="btn-entregar" onclick="corregirCaso(${n})"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+    </div>
+    <div class="feedback" id="fb-${n}"></div>
+  </div>`;
+}
+
+function corregirCaso(n){
+  const c = CASOS[n - 1];
+  const seleccion = document.getElementById('seleccion-' + n).value;
+  const justificacion = document.getElementById('justificacion-' + n).value.trim();
+
+  if (!seleccion){
+    showFeedback('fb-' + n, 'bad', 'Elegí primero una de las opciones de RAID de arriba antes de entregar.');
+    return;
+  }
+  if (justificacion.length < 15){
+    showFeedback('fb-' + n, 'bad', 'Escribí una justificación un poco más desarrollada (al menos 2-3 líneas) antes de entregar — es la parte más importante del ejercicio.');
+    return;
+  }
+
+  const correcto = seleccion === c.correcta;
+  if (correcto){
+    showFeedback('fb-' + n, 'ok',
+      `<b>¡"${c.correcta}" es la opción esperada!</b>
+       <div class="modelo"><b>Justificación modelo:</b> ${c.modelo}<br><br>Compará esta justificación con la tuya — ¿mencionaste las mismas razones (redundancia, velocidad, presupuesto, cantidad de discos)?</div>`);
+    document.getElementById('ex-scenario-' + n).classList.add('solved');
+    if (!solved.has(n)) { solved.add(n); updateProgress(); }
+  } else {
+    showFeedback('fb-' + n, 'bad',
+      `Elegiste "${seleccion}", pero para este caso se esperaba <b>"${c.correcta}"</b>.
+       <div class="modelo"><b>Por qué:</b> ${c.modelo}<br><br>Releé el caso pensando en: ¿cuántos discos hay?, ¿importa más la velocidad o la redundancia?, ¿pueden perder datos si falla un disco? Podés volver a intentarlo.</div>`);
+  }
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const container = document.getElementById('scenarios');
+CASOS.forEach((c, i) => {
+  const div = document.createElement('div');
+  div.className = 'scenario animate__animated animate__fadeInUp';
+  div.id = 'ex-scenario-' + (i + 1);
+  div.innerHTML = buildEscenario(i);
+  container.appendChild(div);
+});
+updateProgress();
+
+/* ============================================================
+   CODIGO DE ENTREGA
+   ============================================================ */
+const swalBase = { background: 'var(--bg-1)', color: 'var(--text)', customClass: { popup: 'so-popup', title: 'so-title' }, confirmButtonColor: '#d4a373', cancelButtonColor: '#6d7c8c' };
+
+async function generarCodigoEntrega(){
+  const { value: nombre } = await Swal.fire({ ...swalBase, title: 'Tu nombre', input: 'text', inputPlaceholder: 'Nombre y apellido', inputValidator: (v) => !v && 'Ingresá tu nombre para generar el código', confirmButtonText: 'Generar código' });
+  if (!nombre) return;
+  const fecha = new Date();
+  const fechaStr = `${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
+  const iniciales = nombre.trim().split(/\s+/).map(p => p[0].toUpperCase()).join('').slice(0,4);
+  const codigo = `SO-RAID-${fechaStr}-${iniciales}-${solved.size}${TOTAL}`;
+  document.getElementById('codigo-entrega-final').innerHTML = `
+    <div class="panel" style="text-align:center; font-family:var(--mono); font-size:1rem; margin-top:14px;">${codigo}</div>
+    <p style="color:var(--text-dim); font-size:.8rem; margin-top:8px;">Copiá este código y enviámelo por el canal del curso, junto con tus justificaciones.</p>
+  `;
+}
+</script>
+</body>
+</html>

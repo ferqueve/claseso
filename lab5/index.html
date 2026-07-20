@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Comandos, Archivos y Permisos en Linux</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f; --bg-1:#0d131b; --bg-2:#121a24; --panel-border:#1f2b38;
+  --green:#39ff88; --green-dim:#1f8a52; --amber:#ffb454; --cyan:#5ccfe6;
+  --indigo:#748ffc; --indigo-dim:#3d4a8a; --red:#ff5c7a;
+  --text:#dbe4ea; --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace; --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:
+    radial-gradient(ellipse at top left, rgba(116,143,252,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text); font-family:var(--display); overflow:hidden; height:100vh;
+}
+::selection{ background:var(--indigo); color:#0a0e1f; }
+.crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:500; background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; }
+
+.statusbar{ position:fixed; top:0; left:0; right:0; height:42px; z-index:200; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75)); border-bottom:1px solid var(--panel-border); font-family:var(--mono); font-size:12.5px; color:var(--text-dim); }
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--indigo); box-shadow:0 0 6px var(--indigo); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--indigo-dim), var(--indigo)); box-shadow:0 0 8px var(--indigo); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{ font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--indigo); display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.4rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.05rem; font-weight:400; color:var(--text-dim); margin-bottom:1.5rem; }
+.accent{ color:var(--indigo); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative; }
+.panel::before{ content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, rgba(116,143,252,.4), transparent); }
+.term-tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px; background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px; }
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12px; color:#3d4a8a; margin-bottom:24px; line-height:1.85; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:3rem; font-weight:700; line-height:1.08; margin:0; }
+.mega .kernel{ color:var(--indigo); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:8px 0 8px 28px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:8px; font-size:.82rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:16px; transition:transform .2s, border-color .2s; }
+.card-min:hover{ transform:translateY(-3px); border-color:var(--indigo-dim); }
+.card-min i{ color:var(--cyan); font-size:1.2rem; margin-bottom:6px; display:block; }
+.card-min h4{ font-size:.95rem; margin-bottom:3px; }
+.card-min p{ font-size:.8rem; color:var(--text-dim); margin:0; }
+
+table.cmd{ width:100%; border-collapse:collapse; font-size:.86rem; }
+table.cmd th{ font-family:var(--mono); text-transform:uppercase; font-size:.68rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:7px 9px; text-align:left; }
+table.cmd td{ padding:8px 9px; border-bottom:1px solid var(--panel-border); }
+table.cmd code{ color:var(--cyan); }
+
+.code-block{ background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:15px 17px; font-family:var(--mono); font-size:.8rem; color:var(--cyan); overflow-x:auto; white-space:pre; line-height:1.7; }
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-indigo{ color:var(--indigo); }
+.code-block .c-red{ color:var(--red); }
+
+.perm-string{ font-family:var(--mono); font-size:1.3rem; letter-spacing:.15em; }
+.perm-string .p-type{ color:var(--text-dim); }
+.perm-string .p-owner{ color:var(--green); }
+.perm-string .p-group{ color:var(--amber); }
+.perm-string .p-other{ color:var(--cyan); }
+
+.btn-quiz{ background:transparent; border:1px solid var(--indigo-dim); color:var(--indigo); font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s; }
+.btn-quiz:hover{ background:var(--indigo); color:#0a0e1f; }
+
+.nav-btn{ position:fixed; top:50%; transform:translateY(-50%); z-index:150; width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border); background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; backdrop-filter:blur(3px); }
+.nav-btn:hover{ color:var(--indigo); border-color:var(--indigo-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--indigo); box-shadow:0 0 6px var(--indigo); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--indigo) !important; }
+
+@media (max-width: 768px){ .mega{ font-size:1.7rem; } h1.title{ font-size:1.4rem; } .slide{ padding:22px 18px 90px 18px; } .mod-num{ display:none; } }
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-solid fa-terminal"></i> Unidad 3 · Interfaces y Scripting</div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria'});
+}
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Montando sistema de archivos ........... /</div>
+    <div>[ <span class="ok">OK</span> ] Cargando comandos esenciales ........... ls, cd, cp, mv, chmod</div>
+    <div>[ <span class="ok">OK</span> ] Preparando laboratorio práctico</div>
+  </div>
+  <div class="eyebrow">boot sequence · comandos y archivos</div>
+  <h1 class="mega">Comandos, Archivos<br>y <span class="kernel">Permisos</span></h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Todo lo que tu Ubuntu ya sabe hacer, desde la terminal</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> o hacé click en las flechas para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 1 · AGENDA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">agenda</div>
+  <h1 class="title">De navegar carpetas a <span class="accent">entender permisos</span></h1>
+  <div class="grid-cards">
+    <div class="card-min">
+      <i class="fa-solid fa-folder-tree"></i>
+      <h4 class="accent-cyan">Módulo 1 · Teoría</h4>
+      <p>Navegación y manejo de archivos y carpetas: pwd, ls, cd, mkdir, cp, mv, rm, cat.</p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-lock"></i>
+      <h4 class="accent-amber">Módulo 2 · Teoría</h4>
+      <p>Permisos: qué significa cada letra, chmod numérico y simbólico, chown, umask.</p>
+    </div>
+    <div class="card-min">
+      <i class="fa-solid fa-sitemap"></i>
+      <h4 class="accent-amber">Módulo 3 · Teoría</h4>
+      <p>El mapa de carpetas de Linux: qué hay en /home, /etc, /var, /bin, /tmp y más.</p>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--indigo);">
+    <div class="term-tag" style="border-color:var(--indigo); color:var(--indigo);">después de esta clase</div>
+    <p style="margin:0;">Hay un laboratorio aparte con <b>ejercicios desbloqueables</b>: los van a resolver de verdad en su Ubuntu, escribiendo el resultado real en la presentación.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 2 · NAVEGACION BASICA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">moviéndose por el sistema de archivos</div>
+  <h1 class="title">Navegación <span class="accent">básica</span></h1>
+  <div class="panel">
+    <table class="cmd">
+      <tr><th>Comando</th><th>Qué hace</th></tr>
+      <tr><td><code>pwd</code></td><td>Muestra la carpeta en la que estás parado ("print working directory")</td></tr>
+      <tr><td><code>ls</code></td><td>Lista el contenido de la carpeta actual</td></tr>
+      <tr><td><code>ls -la</code></td><td>Lista TODO (incluidos ocultos) con detalle (permisos, dueño, tamaño)</td></tr>
+      <tr><td><code>cd carpeta</code></td><td>Entra a una carpeta (ruta relativa)</td></tr>
+      <tr><td><code>cd /ruta/absoluta</code></td><td>Entra a una carpeta desde la raíz</td></tr>
+      <tr><td><code>cd ..</code></td><td>Sube un nivel (a la carpeta padre)</td></tr>
+      <tr><td><code>cd ~</code> o <code>cd</code></td><td>Vuelve directo a tu carpeta personal (home)</td></tr>
+      <tr><td><code>cd -</code></td><td>Vuelve a la carpeta anterior en la que estabas</td></tr>
+    </table>
+  </div>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 3 · CREAR Y MANIPULAR ARCHIVOS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">crear, copiar, mover, borrar</div>
+  <h1 class="title">Manejo de <span class="accent">archivos y carpetas</span></h1>
+  <div class="panel">
+    <table class="cmd">
+      <tr><th>Comando</th><th>Qué hace</th></tr>
+      <tr><td><code>mkdir nombre</code></td><td>Crea una carpeta nueva</td></tr>
+      <tr><td><code>mkdir -p a/b/c</code></td><td>Crea carpetas anidadas de una sola vez</td></tr>
+      <tr><td><code>touch archivo.txt</code></td><td>Crea un archivo vacío (o actualiza su fecha si ya existe)</td></tr>
+      <tr><td><code>cp origen destino</code></td><td>Copia un archivo</td></tr>
+      <tr><td><code>cp -r origen/ destino/</code></td><td>Copia una carpeta completa (recursivo)</td></tr>
+      <tr><td><code>mv origen destino</code></td><td>Mueve o renombra un archivo/carpeta</td></tr>
+      <tr><td><code>rm archivo</code></td><td>Borra un archivo (¡sin papelera de reciclaje!)</td></tr>
+      <tr><td><code>rm -r carpeta/</code></td><td>Borra una carpeta y todo su contenido</td></tr>
+      <tr><td><code>rmdir carpeta</code></td><td>Borra una carpeta, pero solo si está vacía</td></tr>
+    </table>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">cuidado</div>
+    <p style="margin:0;"><code>rm</code> no manda nada a la papelera — es <b>definitivo</b>. <code>rm -rf /</code> (o algo parecido sin querer) puede borrar el sistema entero.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 4 · VER CONTENIDO DE ARCHIVOS ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">lectura y escritura</div>
+  <h1 class="title">Leer y <span class="accent">escribir</span> contenido</h1>
+  <div class="panel">
+    <table class="cmd">
+      <tr><th>Comando</th><th>Qué hace</th></tr>
+      <tr><td><code>cat archivo.txt</code></td><td>Muestra todo el contenido de un archivo de una vez</td></tr>
+      <tr><td><code>less archivo.txt</code></td><td>Muestra el contenido de a poco, se puede navegar con flechas (salir con <code>q</code>)</td></tr>
+      <tr><td><code>head -n 5 archivo.txt</code></td><td>Muestra solo las primeras 5 líneas</td></tr>
+      <tr><td><code>tail -n 5 archivo.txt</code></td><td>Muestra solo las últimas 5 líneas</td></tr>
+      <tr><td><code>echo "hola" > archivo.txt</code></td><td>Escribe "hola" en el archivo (<b>reemplaza</b> todo lo anterior)</td></tr>
+      <tr><td><code>echo "hola" >> archivo.txt</code></td><td>Agrega "hola" al final del archivo (no borra lo anterior)</td></tr>
+      <tr><td><code>nano archivo.txt</code></td><td>Abre un editor de texto simple en la terminal</td></tr>
+    </table>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">> vs >></div>
+    <p style="margin:0;">Un solo <code>></code> <b>sobrescribe</b> el archivo entero. Dos <code>>></code> <b>agregan</b> al final, sin tocar lo que ya había. Confundirlos es una de las formas más comunes de perder datos sin querer.</p>
+  </div>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 5 · QUIZ MODULO 1 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-terminal accent"></i> Antes de los permisos...</h1>
+  <p class="subtitle">Repasemos navegación y manejo de archivos</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 6 · TRANSICION MODULO 2 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · teoría</div>
+  <h1 class="mega" style="font-size:2.6rem;">¿Quién puede<br><span class="kernel" style="color:var(--amber);">hacer qué</span>?</h1>
+  <h2 class="subtitle">Permisos: leer, escribir y ejecutar</h2>
+</div>
+`, {module:2, mtype:'teoria'});
+
+/* ---------- SLIDE 7 · LEYENDO LS -L ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">decodificando ls -l</div>
+  <h1 class="title">Los <span class="accent-amber">10 caracteres</span> que dicen todo</h1>
+  <div class="panel">
+    <p style="margin-bottom:16px;">Cuando hacés <code>ls -l</code>, cada archivo muestra algo así:</p>
+    <div class="perm-string">
+      <span class="p-type">-</span><span class="p-owner">rw-</span><span class="p-group">r--</span><span class="p-other">r--</span>
+    </div>
+    <p style="margin-top:16px; margin-bottom:0;">
+      <span class="p-type">Posición 1</span>: tipo (<code>-</code> archivo, <code>d</code> directorio, <code>l</code> link)<br>
+      <span class="p-owner">Posiciones 2-4</span>: permisos del <b>dueño</b> (owner)<br>
+      <span class="p-group">Posiciones 5-7</span>: permisos del <b>grupo</b><br>
+      <span class="p-other">Posiciones 8-10</span>: permisos de <b>otros</b> (el resto del mundo)
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-eye"></i><h4>r (read)</h4><p>Leer el contenido</p></div>
+    <div class="card-min"><i class="fa-solid fa-pen"></i><h4>w (write)</h4><p>Modificar o borrar</p></div>
+    <div class="card-min"><i class="fa-solid fa-play"></i><h4>x (execute)</h4><p>Ejecutar (o entrar, si es carpeta)</p></div>
+  </div>
+</div>
+`, {module:2, mtype:'teoria'});
+
+/* ---------- SLIDE 8 · CHMOD NUMERICO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">cambiando permisos · modo numérico</div>
+  <h1 class="title"><span class="accent-amber">chmod</span> con números</h1>
+  <div class="panel">
+    <p>Cada permiso vale un número: <b>r=4, w=2, x=1</b>. Se suman para cada uno de los 3 grupos (dueño, grupo, otros).</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// los valores más comunes</span>
+<span class="c-indigo">chmod 755</span> archivo   <span class="c-dim">// rwx r-x r-x  → dueño todo, resto lee y ejecuta</span>
+<span class="c-indigo">chmod 644</span> archivo   <span class="c-dim">// rw- r-- r--  → dueño lee/escribe, resto solo lee</span>
+<span class="c-indigo">chmod 600</span> archivo   <span class="c-dim">// rw- --- ---  → solo el dueño puede tocarlo</span>
+<span class="c-indigo">chmod 777</span> archivo   <span class="c-dim">// rwx rwx rwx  → todos pueden todo (¡casi nunca es buena idea!)</span>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">cómo se arma el número</div>
+    <p style="margin:0;">Para "rw-": 4 (r) + 2 (w) + 0 (sin x) = <b>6</b>. Para "r-x": 4 (r) + 0 + 1 (x) = <b>5</b>. Por eso 644 = rw- r-- r--.</p>
+  </div>
+</div>
+`, {module:2, mtype:'teoria'});
+
+/* ---------- SLIDE 9 · CHMOD SIMBOLICO Y CHOWN ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">otra forma de hacer lo mismo</div>
+  <h1 class="title"><span class="accent-amber">chmod</span> simbólico y <span class="accent-amber">chown</span></h1>
+  <div class="code-block">
+<span class="c-dim">// chmod simbólico: quién (u/g/o/a) + operación (+/-/=) + permiso (r/w/x)</span>
+<span class="c-indigo">chmod u+x</span> script.sh   <span class="c-dim">// agrega ejecución solo al dueño (u = user)</span>
+<span class="c-indigo">chmod g-w</span> archivo     <span class="c-dim">// le quita escritura al grupo (g = group)</span>
+<span class="c-indigo">chmod o=r</span> archivo     <span class="c-dim">// deja a "otros" con SOLO lectura (o = others)</span>
+<span class="c-indigo">chmod a+r</span> archivo     <span class="c-dim">// agrega lectura a todos (a = all)</span>
+
+<span class="c-dim">// chown: cambiar el dueño y/o el grupo de un archivo</span>
+<span class="c-indigo">chown usuario</span> archivo
+<span class="c-indigo">chown usuario:grupo</span> archivo
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">cuándo usar cada forma</div>
+    <p style="margin:0;">El modo numérico (755, 644) es más rápido cuando cambiás <b>todo</b> de una vez. El simbólico (<code>u+x</code>) es mejor cuando querés tocar <b>un solo permiso</b> sin afectar el resto.</p>
+  </div>
+</div>
+`, {module:2, mtype:'teoria'});
+
+/* ---------- SLIDE 10 · QUIZ MODULO 2 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-lock accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Sobre permisos, chmod y chown</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'teoria'});
+
+/* ---------- SLIDE 11 · TRANSICION MODULO 3 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · teoría</div>
+  <h1 class="mega" style="font-size:2.6rem;">El mapa de<br><span class="kernel">carpetas de Linux</span></h1>
+  <h2 class="subtitle">Qué hay en /home, /etc, /var, y por qué</h2>
+</div>
+`, {module:3, mtype:'teoria'});
+
+/* ---------- SLIDE 12 · HOME Y ROOT ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">las carpetas "personales"</div>
+  <h1 class="title"><span class="accent">/home</span> y <span class="accent">/root</span></h1>
+  <div class="grid-cards">
+    <div class="card-min"><i class="fa-solid fa-house"></i><h4>/home/tu_usuario</h4><p>Tu carpeta personal: documentos, descargas, configuraciones propias</p></div>
+    <div class="card-min"><i class="fa-solid fa-user-shield"></i><h4>/root</h4><p>La carpeta personal del superusuario (root) — no está dentro de /home</p></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">el símbolo ~</div>
+    <p style="margin:0;">El símbolo <code>~</code> es un atajo para tu propio home. <code>cd ~</code> es lo mismo que <code>cd /home/tu_usuario</code>.</p>
+  </div>
+</div>
+`, {module:3, mtype:'teoria'});
+
+/* ---------- SLIDE 13 · ETC Y VAR ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">configuración y datos que cambian</div>
+  <h1 class="title"><span class="accent">/etc</span> y <span class="accent">/var</span></h1>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">/etc</div>
+        <p>Archivos de <b>configuración</b> de todo el sistema y sus programas. Ejemplos: <code>/etc/passwd</code> (usuarios), <code>/etc/hostname</code> (nombre del equipo), <code>/etc/os-release</code> (versión del SO).</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel h-100">
+        <div class="term-tag">/var</div>
+        <p>Datos <b>variables</b> que cambian con el uso normal del sistema. Ejemplos: <code>/var/log</code> (registros/logs), <code>/var/www</code> (sitios web, en un servidor), <code>/var/tmp</code> (temporales de larga duración).</p>
+      </div>
+    </div>
+  </div>
+</div>
+`, {module:3, mtype:'teoria'});
+
+/* ---------- SLIDE 14 · BIN, USR, LIB ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">dónde viven los programas</div>
+  <h1 class="title"><span class="accent">/bin</span>, <span class="accent">/usr</span> y <span class="accent">/lib</span></h1>
+  <div class="grid-cards">
+    <div class="card-min"><i class="fa-solid fa-terminal"></i><h4>/bin</h4><p>Comandos esenciales para cualquier usuario (ls, cp, cat...)</p></div>
+    <div class="card-min"><i class="fa-solid fa-boxes-stacked"></i><h4>/usr/bin</h4><p>La mayoría de los programas instalados (no esenciales para arrancar)</p></div>
+    <div class="card-min"><i class="fa-solid fa-book"></i><h4>/lib, /usr/lib</h4><p>Bibliotecas compartidas que los programas necesitan para funcionar</p></div>
+    <div class="card-min"><i class="fa-solid fa-toolbox"></i><h4>/opt</h4><p>Software opcional, instalado por fuera del gestor de paquetes</p></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">dato curioso</div>
+    <p style="margin:0;">En Ubuntu moderno, <code>/bin</code> es en realidad un <b>enlace simbólico</b> a <code>/usr/bin</code> — hace tiempo que dejaron de estar separados de verdad.</p>
+  </div>
+</div>
+`, {module:3, mtype:'teoria'});
+
+/* ---------- SLIDE 15 · TMP, DEV, PROC, BOOT ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">carpetas especiales</div>
+  <h1 class="title"><span class="accent">/tmp</span>, <span class="accent">/dev</span>, <span class="accent">/proc</span> y <span class="accent">/boot</span></h1>
+  <div class="grid-cards">
+    <div class="card-min"><i class="fa-solid fa-trash-can"></i><h4>/tmp</h4><p>Archivos temporales — se borra su contenido al reiniciar</p></div>
+    <div class="card-min"><i class="fa-solid fa-microchip"></i><h4>/dev</h4><p>Representa dispositivos de hardware como archivos (ej. <code>/dev/sda</code> es un disco)</p></div>
+    <div class="card-min"><i class="fa-solid fa-diagram-project"></i><h4>/proc</h4><p>Información en vivo del kernel y los procesos corriendo — no son archivos reales en disco</p></div>
+    <div class="card-min"><i class="fa-solid fa-power-off"></i><h4>/boot</h4><p>El kernel de Linux y los archivos que necesita el arranque (¡como los que armamos en la Clase 3!)</p></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">/mnt y /media</div>
+    <p style="margin:0;"><code>/mnt</code> y <code>/media</code> son donde normalmente se "montan" discos externos, pendrives o carpetas compartidas.</p>
+  </div>
+</div>
+`, {module:3, mtype:'teoria'});
+
+/* ---------- SLIDE 16 · QUIZ FINAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Antes del laboratorio</h1>
+  <p class="subtitle">Repasemos el mapa de carpetas de Linux</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'teoria'});
+
+/* ---------- SLIDE 17 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de la teoría</div>
+  <h1 class="mega" style="font-size:2.5rem;">Ahora, a <span class="kernel">practicarlo</span> de verdad</h1>
+  <div class="panel" style="margin-top:20px; max-width:640px;">
+    <div class="term-tag">laboratorio aparte</div>
+    <ul class="checklist">
+      <li>Abrí tu VM Ubuntu (la que armamos en la Clase 1)</li>
+      <li>Vas a resolver ejercicios reales, ejecutando comandos de verdad</li>
+      <li>Cada ejercicio se desbloquea al resolver el anterior</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada — a la terminal.</div>
+</div>
+`, {module:3, mtype:'teoria'});
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{ el.classList.toggle('active', i===current); });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{ d.classList.toggle('on', i===current); });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+function goTo(i){ if(i<0 || i>=slides.length) return; current = i; render(); }
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{ if(e.key === 'ArrowRight') goTo(current+1); if(e.key === 'ArrowLeft') goTo(current-1); });
+render();
+
+const swalBase = { background: 'var(--bg-1)', color: 'var(--text)', customClass: { popup: 'so-popup', title: 'so-title' }, confirmButtonColor: '#748ffc', cancelButtonColor: '#6d7c8c' };
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({ ...swalBase, title, html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`, input: 'radio', inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])), inputValidator: (v)=> !v && '¡Elegí una opción!', confirmButtonText: 'Responder' });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({ ...swalBase, icon: correct ? 'success' : 'error', title: correct ? '¡Correcto!' : 'No exactamente...', html: `<p style="color:var(--text-dim);">${explain}</p>`, confirmButtonText: 'Seguir' });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Navegación',
+    '¿Qué hace el comando cd -?',
+    ['Sube un nivel en el árbol de carpetas','Vuelve a la carpeta anterior en la que estabas','Borra la carpeta actual','Crea una carpeta con nombre "-"'], 1,
+    '<code>cd -</code> es un atajo para volver a la última carpeta en la que estabas antes de moverte a la actual.'
+  );
+  await askMC(
+    'Redirección',
+    '¿Cuál es la diferencia entre > y >> al escribir en un archivo?',
+    ['No hay diferencia real','> sobrescribe todo el archivo; >> agrega al final sin borrar lo anterior','> es más rápido que >>','>> solo funciona con archivos vacíos'], 1,
+    '<code>></code> reemplaza completamente el contenido del archivo; <code>>></code> agrega al final, conservando lo que ya había.'
+  );
+  await askMC(
+    'Borrado',
+    '¿Qué pasa con un archivo borrado con rm en Linux?',
+    ['Va a una papelera de reciclaje, se puede recuperar','Se borra de forma definitiva, sin papelera','Se mueve automáticamente a /tmp','Queda oculto pero se puede ver con ls -la'], 1,
+    'A diferencia de un entorno gráfico con papelera, <code>rm</code> desde la terminal borra el archivo de forma <b>definitiva</b>.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora sí, a entender los permisos.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'Permisos numéricos',
+    '¿Qué significa el permiso 644 en chmod?',
+    ['rwxrwxrwx','rw-r--r--','r--r--r--','rwx------'], 1,
+    '644 = rw- (6) para el dueño, r-- (4) para el grupo, r-- (4) para otros — el dueño puede leer y escribir, el resto solo leer.'
+  );
+  await askMC(
+    'chmod simbólico',
+    '¿Qué hace el comando chmod u+x script.sh?',
+    ['Le quita permisos de lectura a todos','Le agrega permiso de ejecución solo al dueño del archivo','Cambia el dueño del archivo','Lo hace legible para todos los usuarios'], 1,
+    '<code>u+x</code> agrega (+) el permiso de ejecución (x) solo al usuario dueño (u) del archivo.'
+  );
+  await askMC(
+    'chown',
+    '¿Para qué sirve el comando chown?',
+    ['Para cambiar los permisos de lectura/escritura','Para cambiar el dueño y/o grupo de un archivo','Para comprimir un archivo','Para ver el contenido de un archivo'], 1,
+    '<code>chown</code> cambia quién es el dueño (y opcionalmente el grupo) de un archivo o carpeta.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, el mapa de carpetas de Linux.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'Directorios',
+    '¿Dónde vive normalmente la configuración de todo el sistema (como /etc/hostname)?',
+    ['/var','/etc','/tmp','/home'], 1,
+    '<b>/etc</b> concentra los archivos de configuración de todo el sistema y sus programas.'
+  );
+  await askMC(
+    'Directorios',
+    '¿Qué tipo de contenido esperarías encontrar en /var/log?',
+    ['Los programas instalados','Registros (logs) de actividad del sistema','La carpeta personal de cada usuario','El kernel de Linux'], 1,
+    '<b>/var/log</b> guarda los registros (logs) que el sistema y sus servicios van generando con el uso.'
+  );
+  await askMC(
+    'Directorios',
+    '¿Qué representa /dev en Linux?',
+    ['Archivos temporales que se borran al reiniciar','Dispositivos de hardware, representados como archivos','La documentación del sistema','Las bibliotecas compartidas'], 1,
+    '<b>/dev</b> expone el hardware (discos, terminales, etc.) como si fueran archivos — una idea muy típica de Unix/Linux.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase completa!', text:'Ahora sí, al laboratorio práctico con tu propia Ubuntu.'});
+}
+</script>
+</body>
+</html>

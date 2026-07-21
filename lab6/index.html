@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investigación · Discos y Sistemas de Archivos</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f; --bg-1:#0d131b; --bg-2:#121a24; --panel-border:#1f2b38;
+  --green:#39ff88; --green-dim:#1f8a52; --amber:#ffb454; --red:#ff5c7a;
+  --sand:#d4a373; --sand-dim:#7a5a3a; --cyan:#5ccfe6;
+  --text:#dbe4ea; --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace; --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{min-height:100%;}
+body{
+  margin:0; background:
+    radial-gradient(ellipse at top left, rgba(212,163,115,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text); font-family:var(--display);
+}
+::selection{ background:var(--sand); color:#211505; }
+.crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:500; background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; }
+
+.statusbar{ position:sticky; top:0; z-index:200; height:46px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:linear-gradient(180deg, rgba(13,19,27,0.97), rgba(13,19,27,0.85)); border-bottom:1px solid var(--panel-border); font-family:var(--mono); font-size:12.5px; color:var(--text-dim); backdrop-filter:blur(4px); }
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--sand); box-shadow:0 0 6px var(--sand); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+#progress-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid var(--sand); color:var(--sand); }
+
+.wrap{ max-width:900px; margin:0 auto; padding:36px 20px 100px 20px; }
+
+.hero{ text-align:center; margin-bottom:28px; }
+.eyebrow{ font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--sand); display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; }
+.eyebrow::before, .eyebrow::after{ content:'//'; color:var(--text-dim); }
+h1.mega{ font-size:2.1rem; font-weight:700; margin:0 0 8px 0; }
+h1.mega .accent{ color:var(--sand); }
+.hero p{ color:var(--text-dim); font-size:1rem; max-width:680px; margin:0 auto; }
+
+.panel{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:10px; padding:18px 22px; position:relative; margin-bottom:24px; }
+.panel::before{ content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, rgba(212,163,115,.4), transparent); }
+.term-tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px; background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px; }
+
+.pregunta{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:12px; margin-bottom:20px; overflow:hidden; }
+.pregunta.hecha{ border-color:var(--green-dim); }
+.pregunta-head{ display:flex; align-items:center; gap:14px; padding:16px 22px; border-bottom:1px solid var(--panel-border); }
+.pregunta-num{ width:36px; height:36px; border-radius:50%; border:2px solid var(--sand-dim); color:var(--sand); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; flex-shrink:0; }
+.pregunta.hecha .pregunta-num{ background:var(--green); border-color:var(--green); color:#04120a; }
+.pregunta-head h3{ margin:0; font-size:1rem; }
+.pregunta-body{ padding:18px 22px 20px 22px; }
+.pregunta-body p.consigna{ color:var(--text); line-height:1.6; margin-bottom:14px; font-size:.96rem; }
+.pregunta-body p.contexto{ color:var(--text-dim); font-size:.85rem; margin-bottom:14px; font-style:italic; }
+
+textarea.respuesta{ width:100%; background:#04070b; border:1px solid var(--panel-border); border-radius:8px; color:var(--cyan); font-family:var(--display); font-size:.9rem; padding:12px 14px; resize:vertical; min-height:90px; outline:none; }
+textarea.respuesta:focus{ border-color:var(--sand); }
+textarea.respuesta::placeholder{ color:var(--text-dim); font-family:var(--display); }
+
+.actions{ display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+.btn-revelar{ background:var(--sand); border:none; color:#211505; font-family:var(--mono); font-weight:700; border-radius:6px; padding:9px 18px; font-size:.82rem; transition:.2s; }
+.btn-revelar:hover{ background:#e3b98c; }
+
+.modelo-box{ margin-top:14px; padding:14px 16px; border-radius:8px; font-size:.88rem; line-height:1.6; background:rgba(212,163,115,.08); border:1px solid var(--sand-dim); color:var(--text); display:none; }
+.modelo-box.show{ display:block; }
+.modelo-box .titulo{ font-family:var(--mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--sand); margin-bottom:6px; }
+
+.final-panel{ text-align:center; padding:36px 20px; border:1px solid var(--panel-border); border-radius:12px; background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); display:none; }
+.final-panel.show{ display:block; }
+.final-panel i{ font-size:2.2rem; color:var(--green); margin-bottom:10px; display:block; }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.05rem !important; color:var(--sand) !important; }
+#codigo-entrega-final{ margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> INVESTIGACIÓN · DISCOS Y SISTEMAS DE ARCHIVOS</div>
+  <div class="seg" id="progress-badge">0 / 6 PREGUNTAS</div>
+</div>
+
+<div class="wrap">
+  <div class="hero animate__animated animate__fadeIn">
+    <div class="eyebrow">para entender lo que están programando hoy</div>
+    <h1 class="mega">¿Por qué un disco <span class="accent">"de mentira"</span>?</h1>
+    <p>Hoy están implementando <code>disco_ram[NUM_BLOQUES][TAM_BLOQUE]</code> — un arreglo en memoria que simula un disco. Estas 6 preguntas son para que investiguen y entiendan bien la diferencia entre eso y un disco real, y por qué el curso lo resuelve así por ahora.</p>
+  </div>
+
+  <div class="panel">
+    <div class="term-tag">cómo trabajar esto</div>
+    <p style="margin:0; color:var(--text-dim); font-size:.9rem;">Investigá cada pregunta (documentación, libros del curso, lo que ya vimos en clase) y escribí tu respuesta con tus palabras. Después de escribirla, apretá "Revelar respuesta modelo" para comparar — no hay una única forma correcta de explicarlo, pero fijate si tocaste las mismas ideas clave.</p>
+  </div>
+
+  <div id="preguntas"></div>
+
+  <div class="final-panel" id="finalPanel">
+    <i class="fa-solid fa-trophy"></i>
+    <h2 style="margin:0 0 8px 0;">¡Completaste las 6 preguntas!</h2>
+    <p style="color:var(--text-dim);">Generá tu código de entrega y enviámelo por el canal del curso, junto con tus respuestas escritas.</p>
+    <button class="btn-revelar" onclick="generarCodigoEntrega()"><i class="fa-solid fa-stamp"></i> Generar código de entrega</button>
+    <div id="codigo-entrega-final"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+<script>
+const hechas = new Set();
+const TOTAL = 6;
+
+function updateProgress(){
+  document.getElementById('progress-badge').textContent = `${hechas.size} / ${TOTAL} PREGUNTAS`;
+  if (hechas.size === TOTAL){
+    document.getElementById('finalPanel').classList.add('show');
+  }
+}
+
+const PREGUNTAS = [
+  {
+    titulo: "¿Por qué la RAM se borra al apagar?",
+    contexto: "Nuestro disco_ram vive en la misma memoria donde vive todo lo demás del kernel.",
+    consigna: "Investigá: ¿por qué la memoria RAM pierde su contenido al cortar la energía? ¿Qué tiene que ver esto con cómo está construida físicamente (a nivel de transistores/capacitores)?",
+    modelo: "La RAM (memoria volátil) guarda cada bit como una carga eléctrica en un capacitor (RAM dinámica) o en un circuito biestable (RAM estática) que necesita alimentación constante para mantener su estado. Sin energía, esa carga se disipa en fracciones de segundo y el dato se pierde — por eso todo lo que hace nuestro kernel en disco_ram desaparece al apagar o reiniciar la VM."
+  },
+  {
+    titulo: "¿Cómo guarda datos un disco real sin electricidad?",
+    contexto: "Un HDD o un SSD sí conservan los datos apagados.",
+    consigna: "Investigá la diferencia entre cómo un disco duro (HDD) y un SSD guardan la información de forma persistente, sin necesitar energía constante.",
+    modelo: "Un HDD graba la información como orientaciones magnéticas en la superficie de platos que giran — el magnetismo se mantiene sin electricidad. Un SSD usa memoria flash: celdas que atrapan electrones dentro de una compuerta aislada, reteniéndolos incluso sin alimentación. Ninguno de los dos necesita energía continua para conservar el dato, a diferencia de la RAM."
+  },
+  {
+    titulo: "Sectores, bloques y nuestro TAM_BLOQUE",
+    contexto: "En nuestro disco simulado, TAM_BLOQUE vale 512 bytes.",
+    consigna: "Investigá qué es un sector de disco (en un HDD/SSD real) y por qué 512 bytes (o 4096 en discos modernos) es un tamaño típico. ¿Por qué elegimos justo ese número para nuestro kernel?",
+    modelo: "Un sector es la unidad mínima de lectura/escritura física de un disco — el controlador no puede leer o escribir menos que un sector completo, aunque solo necesites 1 byte. 512 bytes fue el estándar histórico (discos modernos usan 4096, 'Advanced Format'). Elegimos 512 en nuestro kernel para que la estructura de disco_ram se parezca conceptualmente a la de un disco real, aunque en RAM no exista esa restricción física."
+  },
+  {
+    titulo: "¿Qué le faltaría a nuestro kernel para hablar con un disco de verdad?",
+    contexto: "Conectá esto con lo que ya vimos del PIC y las interrupciones en la Clase 10.",
+    consigna: "Investigá qué es un controlador de disco (ATA/IDE, o el más moderno AHCI/NVMe) y qué pasos harían falta para que nuestro kernel leyera y escribiera en un disco físico real, en vez de en RAM.",
+    modelo: "Haría falta un driver que hable con el controlador de disco a través de sus puertos de E/S (similar a como el teclado usa el puerto 0x60), enviando comandos como 'leer sector N' o 'escribir sector N', y esperando una interrupción de hardware que avise cuándo la operación terminó — igual que el driver de teclado de la Clase 10, pero mucho más complejo porque las operaciones de disco tardan mucho más tiempo (hay que esperar, no es instantáneo como acceder a RAM)."
+  },
+  {
+    titulo: "¿Por qué el curso eligió simularlo en vez de hacerlo real?",
+    contexto: "Esta es una decisión pedagógica, no una limitación técnica insalvable.",
+    consigna: "Pensalo con tus palabras: ¿por qué tiene sentido, en un curso, separar el concepto de 'sistema de archivos' (cómo se organizan los datos: inodos, bitmap, directorios) del concepto de 'driver de disco' (cómo se accede físicamente al hardware)?",
+    modelo: "Son dos problemas distintos que se pueden aprender por separado: el sistema de archivos es una cuestión de organización de datos y estructuras (que es igual sin importar si el almacenamiento de abajo es RAM, un HDD o un SSD), mientras que el driver de disco es un problema de comunicación con hardware específico. Simulando el disco en RAM, el curso permite enfocarse en el diseño del sistema de archivos sin la complejidad adicional de escribir un driver ATA/IDE completo — que además varía mucho según el tipo de disco y controlador."
+  },
+  {
+    titulo: "Reflexión final: ¿qué se pierde exactamente?",
+    contexto: "Pensalo en términos concretos de tu propio kernel.",
+    consigna: "Si reiniciás tu VM ahora mismo, después de crear y escribir archivos con fs_crear()/fs_escribir(), ¿qué información se pierde exactamente? ¿Qué tendría que pasar para que esos archivos sobrevivieran a un reinicio?",
+    modelo: "Se pierde absolutamente todo: la tabla de inodos, el bitmap de bloques, y el contenido de disco_ram completo — porque todo eso vive en la RAM del kernel, que se reinicializa en cada arranque. Para que sobreviviera, ese mismo contenido tendría que estar escrito físicamente en un disco real (HDD/SSD) a través de un driver, y el kernel tendría que leerlo de vuelta al arrancar para reconstruir la tabla de inodos — exactamente lo que hace un sistema operativo real al montar un sistema de archivos existente."
+  },
+];
+
+function buildPregunta(i){
+  const p = PREGUNTAS[i];
+  const n = i + 1;
+  return `
+  <div class="pregunta-head"><div class="pregunta-num">${n}</div><h3>${p.titulo}</h3></div>
+  <div class="pregunta-body">
+    <p class="contexto">${p.contexto}</p>
+    <p class="consigna">${p.consigna}</p>
+    <textarea class="respuesta" id="respuesta-${n}" placeholder="Escribí acá tu respuesta, investigada y en tus propias palabras..."></textarea>
+    <div class="actions">
+      <button class="btn-revelar" onclick="revelar(${n})"><i class="fa-solid fa-eye"></i> Revelar respuesta modelo</button>
+    </div>
+    <div class="modelo-box" id="modelo-${n}">
+      <div class="titulo">Respuesta modelo — compará con la tuya</div>
+      <div>${p.modelo}</div>
+    </div>
+  </div>`;
+}
+
+function revelar(n){
+  const respuesta = document.getElementById('respuesta-' + n).value.trim();
+  if (respuesta.length < 15){
+    Swal.fire({
+      background: 'var(--bg-1)', color: 'var(--text)',
+      customClass: { popup: 'so-popup', title: 'so-title' }, confirmButtonColor: '#d4a373',
+      icon: 'warning', title: 'Escribí tu respuesta primero',
+      text: 'Investigá y escribí algo (aunque sea breve) antes de ver la respuesta modelo — así podés comparar de verdad.'
+    });
+    return;
+  }
+  document.getElementById('modelo-' + n).classList.add('show');
+  document.getElementById('ex-pregunta-' + n).classList.add('hecha');
+  if (!hechas.has(n)) { hechas.add(n); updateProgress(); }
+}
+
+const container = document.getElementById('preguntas');
+PREGUNTAS.forEach((p, i) => {
+  const div = document.createElement('div');
+  div.className = 'pregunta animate__animated animate__fadeInUp';
+  div.id = 'ex-pregunta-' + (i + 1);
+  div.innerHTML = buildPregunta(i);
+  container.appendChild(div);
+});
+updateProgress();
+
+async function generarCodigoEntrega(){
+  const swalBase = { background: 'var(--bg-1)', color: 'var(--text)', customClass: { popup: 'so-popup', title: 'so-title' }, confirmButtonColor: '#d4a373', cancelButtonColor: '#6d7c8c' };
+  const { value: nombre } = await Swal.fire({ ...swalBase, title: 'Tu nombre', input: 'text', inputPlaceholder: 'Nombre y apellido', inputValidator: (v) => !v && 'Ingresá tu nombre para generar el código', confirmButtonText: 'Generar código' });
+  if (!nombre) return;
+  const fecha = new Date();
+  const fechaStr = `${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
+  const iniciales = nombre.trim().split(/\s+/).map(p => p[0].toUpperCase()).join('').slice(0,4);
+  const codigo = `SO-DISCOS-${fechaStr}-${iniciales}-${hechas.size}${TOTAL}`;
+  document.getElementById('codigo-entrega-final').innerHTML = `
+    <div class="panel" style="text-align:center; font-family:var(--mono); font-size:1rem; margin-top:14px;">${codigo}</div>
+    <p style="color:var(--text-dim); font-size:.8rem; margin-top:8px;">Copiá este código y enviámelo por el canal del curso, junto con tus respuestas.</p>
+  `;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Actividad · Identificá y Corregí Interbloqueos</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f; --bg-1:#0d131b; --bg-2:#121a24; --panel-border:#1f2b38;
+  --green:#39ff88; --green-dim:#1f8a52; --amber:#ffb454; --red:#ff5c7a;
+  --wine:#c24a5a; --wine-dim:#6b2530; --cyan:#5ccfe6;
+  --text:#dbe4ea; --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace; --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{min-height:100%;}
+body{
+  margin:0; background:
+    radial-gradient(ellipse at top left, rgba(194,74,90,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text); font-family:var(--display);
+}
+::selection{ background:var(--wine); color:#1c0509; }
+.crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:500; background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; }
+
+.statusbar{ position:sticky; top:0; z-index:200; height:46px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:linear-gradient(180deg, rgba(13,19,27,0.97), rgba(13,19,27,0.85)); border-bottom:1px solid var(--panel-border); font-family:var(--mono); font-size:12.5px; color:var(--text-dim); backdrop-filter:blur(4px); }
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--wine); box-shadow:0 0 6px var(--wine); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+#progress-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid var(--wine); color:var(--wine); }
+
+.wrap{ max-width:900px; margin:0 auto; padding:36px 20px 100px 20px; }
+
+.hero{ text-align:center; margin-bottom:32px; }
+.eyebrow{ font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--wine); display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; }
+.eyebrow::before, .eyebrow::after{ content:'//'; color:var(--text-dim); }
+h1.mega{ font-size:2.2rem; font-weight:700; margin:0 0 8px 0; }
+h1.mega .accent{ color:var(--wine); }
+.hero p{ color:var(--text-dim); font-size:1rem; max-width:680px; margin:0 auto; }
+
+.exercise{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:12px; margin-bottom:22px; overflow:hidden; transition:opacity .3s, filter .3s; }
+.exercise.locked{ opacity:.4; filter:grayscale(.6); pointer-events:none; }
+.exercise-head{ display:flex; align-items:center; gap:14px; padding:18px 22px; border-bottom:1px solid var(--panel-border); }
+.exercise-num{ width:38px; height:38px; border-radius:50%; border:2px solid var(--wine-dim); color:var(--wine); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; flex-shrink:0; }
+.exercise.solved .exercise-num{ background:var(--green); border-color:var(--green); color:#04120a; }
+.exercise-head h3{ margin:0; font-size:1.02rem; }
+.exercise-head .badge-diff{ margin-left:auto; font-family:var(--mono); font-size:.7rem; padding:3px 8px; border-radius:4px; border:1px solid var(--panel-border); color:var(--text-dim); }
+.exercise-body{ padding:20px 22px 22px 22px; }
+.exercise p.desc{ color:var(--text-dim); line-height:1.6; margin-bottom:12px; }
+
+.code-block{ background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:14px 16px; font-family:var(--mono); font-size:.82rem; color:var(--cyan); overflow-x:auto; white-space:pre; line-height:1.7; margin-bottom:14px; }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-green{ color:var(--green); }
+.code-block .c-red{ color:var(--red); }
+
+.blank-input{ background:#0a1018; border:1px solid var(--wine-dim); color:var(--cyan); font-family:var(--mono); font-size:.85rem; padding:8px 12px; border-radius:4px; width:100%; outline:none; }
+.blank-input:focus{ border-color:var(--wine); box-shadow:0 0 0 2px rgba(194,74,90,.2); }
+textarea.blank-input{ resize:vertical; min-height:90px; }
+
+.actions{ display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
+.btn-entregar{ background:var(--wine); border:none; color:#1c0509; font-family:var(--mono); font-weight:700; border-radius:6px; padding:9px 18px; font-size:.82rem; transition:.2s; }
+.btn-entregar:hover{ background:#d97186; }
+.btn-hint{ background:transparent; border:1px solid var(--amber); color:var(--amber); font-family:var(--mono); border-radius:6px; padding:9px 16px; font-size:.8rem; transition:.2s; }
+.btn-hint:hover{ background:var(--amber); color:#211505; }
+
+.feedback{ margin-top:14px; padding:12px 16px; border-radius:8px; font-size:.88rem; line-height:1.55; display:none; }
+.feedback.ok{ background:rgba(57,255,136,.08); border:1px solid var(--green-dim); color:var(--green); display:block; }
+.feedback.bad{ background:rgba(255,92,122,.08); border:1px solid #7a2c3a; color:var(--red); display:block; }
+.feedback.hint{ background:rgba(255,180,84,.08); border:1px solid #8a5b1f; color:var(--amber); display:block; }
+
+.final-panel{ text-align:center; padding:40px 20px; border:1px solid var(--panel-border); border-radius:12px; background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); display:none; }
+.final-panel.show{ display:block; }
+.final-panel i{ font-size:2.4rem; color:var(--green); margin-bottom:12px; display:block; }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.05rem !important; color:var(--wine) !important; }
+#codigo-entrega-final{ margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> ACTIVIDAD · IDENTIFICAR Y CORREGIR INTERBLOQUEOS</div>
+  <div class="seg" id="progress-badge">0 / 6 EJERCICIOS</div>
+</div>
+
+<div class="wrap">
+  <div class="hero animate__animated animate__fadeIn">
+    <div class="eyebrow">práctica autocorregida · complemento de la clase 9</div>
+    <h1 class="mega">Identificá y <span class="accent">Corregí</span> Interbloqueos</h1>
+    <p>6 ejercicios cortos, cada vez un poco más difíciles. En algunos vas a identificar qué está mal, en otros vas a reescribir o reordenar código para que el interbloqueo no pueda ocurrir. Resolvé uno para desbloquear el siguiente.</p>
+  </div>
+
+  <div id="exercises"></div>
+
+  <div class="final-panel" id="finalPanel">
+    <i class="fa-solid fa-trophy"></i>
+    <h2 style="margin:0 0 8px 0;">¡Completaste los 6 ejercicios!</h2>
+    <p style="color:var(--text-dim);">Generá tu código de entrega y enviámelo por el canal del curso.</p>
+    <button class="btn-entregar" onclick="generarCodigoEntrega()"><i class="fa-solid fa-stamp"></i> Generar código de entrega</button>
+    <div id="codigo-entrega-final"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+<script>
+const solved = new Set();
+const TOTAL = 6;
+
+function updateProgress(){
+  document.getElementById('progress-badge').textContent = `${solved.size} / ${TOTAL} EJERCICIOS`;
+  for (let i = 1; i <= TOTAL; i++){
+    const el = document.getElementById('ex-' + i);
+    if (!el) continue;
+    if (i === 1 || solved.has(i - 1)) el.classList.remove('locked');
+    else el.classList.add('locked');
+  }
+  if (solved.size === TOTAL){
+    document.getElementById('finalPanel').classList.add('show');
+    document.getElementById('finalPanel').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+}
+function markSolved(n){
+  solved.add(n);
+  document.getElementById('ex-' + n).classList.add('solved');
+  updateProgress();
+  const fb = document.getElementById('fb-' + n);
+  if (fb) {
+    const isLast = n === TOTAL;
+    const btnLabel = isLast ? 'Ir al cierre' : `Siguiente ejercicio (${n + 1}) →`;
+    fb.innerHTML += `<div style="margin-top:12px;"><button class="btn-entregar" onclick="goToNext(${n})"><i class="fa-solid fa-arrow-right"></i> ${btnLabel}</button></div>`;
+  }
+  setTimeout(() => goToNext(n), 1200);
+}
+function goToNext(n){
+  const next = document.getElementById('ex-' + (n + 1));
+  if (next) next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  else { const fp = document.getElementById('finalPanel'); if (fp) fp.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+}
+function showFeedback(id, type, html){
+  const el = document.getElementById(id);
+  el.className = 'feedback ' + type;
+  el.innerHTML = html;
+}
+function norm(s){ return s.replace(/\s+/g, ' ').trim().toLowerCase(); }
+
+/* ============================================================
+   EJERCICIO 1 — identificar la condición de Coffman rota
+   ============================================================ */
+function buildEx1(){
+  return `
+  <div class="exercise-head"><div class="exercise-num">1</div><h3>¿Qué condición se rompe acá?</h3><span class="badge-diff">fácil</span></div>
+  <div class="exercise-body">
+    <p class="desc">Un administrador, cansado de que un proceso se cuelgue con un recurso tomado, agrega esto al kernel:</p>
+    <div class="code-block">
+<span class="c-dim">// nueva regla del sistema:</span>
+<span class="c-amber">si un proceso tiene un recurso tomado hace más de 5 segundos,
+el sistema operativo se lo quita a la fuerza y se lo da a otro proceso</span>
+    </div>
+    <p class="desc">Esta regla, sola, rompe una de las 4 condiciones de Coffman — sin ella ya no puede haber interbloqueo por esa vía. ¿Cuál es?</p>
+    <input class="blank-input" id="e1answer" placeholder="nombre de la condición">
+    <div class="actions">
+      <button class="btn-entregar" onclick="checkEx1()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-hint" onclick="hintEx1()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-1"></div>
+  </div>`;
+}
+function hintEx1(){
+  showFeedback('fb-1', 'hint', 'Pensá en las 4 condiciones: exclusión mutua, retención y espera, no apropiación, espera circular. ¿Cuál de ellas dice literalmente que "nadie le puede quitar un recurso a la fuerza a un proceso"?');
+}
+function checkEx1(){
+  const v = norm(document.getElementById('e1answer').value);
+  if (/no.?apropiaci/.test(v)){
+    showFeedback('fb-1', 'ok', '<b>¡Correcto!</b> "No apropiación" dice que nadie puede quitarle un recurso a un proceso a la fuerza. Si el sistema SÍ puede quitárselo (como en esta regla), esa condición deja de cumplirse — y sin ella, no puede haber interbloqueo por esta vía.');
+    markSolved(1);
+  } else {
+    showFeedback('fb-1', 'bad', 'No es esa. Pensá: la regla nueva permite que el sistema le "robe" el recurso a un proceso después de un tiempo — eso contradice directamente una de las 4 condiciones necesarias para el interbloqueo.');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 2 — reordenar 2 procesos con recursos cruzados
+   ============================================================ */
+function buildEx2(){
+  return `
+  <div class="exercise-head"><div class="exercise-num">2</div><h3>Reescribí para evitar el cruce</h3><span class="badge-diff">fácil</span></div>
+  <div class="exercise-body">
+    <p class="desc">Estos dos procesos comparten una impresora y un escáner. Tal como están escritos, pueden interbloquearse:</p>
+    <div class="code-block">
+<span class="c-dim">void proceso_a(void) {</span>
+    sem_wait(&sem_impresora);
+    sem_wait(&sem_escaner);
+    <span class="c-dim">// ... usar ambos ...</span>
+    sem_signal(&sem_escaner);
+    sem_signal(&sem_impresora);
+<span class="c-dim">}</span>
+
+<span class="c-dim">void proceso_b(void) {</span>
+    sem_wait(&sem_escaner);      <span class="c-red">← acá está el problema</span>
+    sem_wait(&sem_impresora);
+    <span class="c-dim">// ... usar ambos ...</span>
+    sem_signal(&sem_impresora);
+    sem_signal(&sem_escaner);
+<span class="c-dim">}</span>
+    </div>
+    <p class="desc">Reescribí SOLO las 2 líneas de <code>sem_wait</code> de <code>proceso_b</code>, en el orden que evita el interbloqueo (una línea <code>sem_wait</code> por renglón):</p>
+    <textarea class="blank-input" id="e2answer" placeholder="sem_wait(...);
+sem_wait(...);"></textarea>
+    <div class="actions">
+      <button class="btn-entregar" onclick="checkEx2()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-hint" onclick="hintEx2()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-2"></div>
+  </div>`;
+}
+function hintEx2(){
+  showFeedback('fb-2', 'hint', 'La regla de prevención que vimos en la Clase 9: todos los procesos tienen que pedir los recursos compartidos en el MISMO orden. proceso_a pide primero impresora, después escáner — proceso_b tiene que pedir en ese mismo orden.');
+}
+function checkEx2(){
+  const v = norm(document.getElementById('e2answer').value);
+  const idxImpresora = v.search(/sem_wait\s*\(\s*&sem_impresora\s*\)/);
+  const idxEscaner = v.search(/sem_wait\s*\(\s*&sem_escaner\s*\)/);
+  if (idxImpresora !== -1 && idxEscaner !== -1 && idxImpresora < idxEscaner){
+    showFeedback('fb-2', 'ok', '<b>¡Correcto!</b> Ahora los dos procesos piden primero la impresora y después el escáner — nunca puede formarse un ciclo de espera cruzada.');
+    markSolved(2);
+  } else if (idxImpresora === -1 || idxEscaner === -1) {
+    showFeedback('fb-2', 'bad', 'Faltan uno o los dos sem_wait. Necesitás las 2 líneas: sem_wait(&sem_impresora) y sem_wait(&sem_escaner).');
+  } else {
+    showFeedback('fb-2', 'bad', 'Están las 2 líneas, pero en el orden equivocado — tienen que quedar en el MISMO orden que proceso_a (primero impresora, después escáner).');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 3 — el signal que falta en un camino de error
+   ============================================================ */
+function buildEx3(){
+  return `
+  <div class="exercise-head"><div class="exercise-num">3</div><h3>El interbloqueo que aparece solo a veces</h3><span class="badge-diff">medio</span></div>
+  <div class="exercise-body">
+    <p class="desc">Este código funciona perfecto casi siempre... hasta que <code>datos_validos()</code> da falso. A partir de ahí, cualquier otro proceso que pida <code>mutex_buffer</code> se queda esperando para siempre.</p>
+    <div class="code-block">
+<span class="c-dim">void procesar_buffer(void) {</span>
+    sem_wait(&mutex_buffer);
+
+    <span class="c-dim">if (!datos_validos()) {</span>
+        <span class="c-red">return;  ← acá está el bug</span>
+    <span class="c-dim">}</span>
+
+    <span class="c-dim">// ... procesar los datos ...</span>
+
+    sem_signal(&mutex_buffer);
+<span class="c-dim">}</span>
+    </div>
+    <p class="desc">Reescribí SOLO esas 2 líneas (el <code>if</code> y el <code>return</code>) para que el semáforo se libere incluso cuando los datos no son válidos:</p>
+    <textarea class="blank-input" id="e3answer" placeholder="if (!datos_validos()) {
+    ...
+    return;
+}"></textarea>
+    <div class="actions">
+      <button class="btn-entregar" onclick="checkEx3()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-hint" onclick="hintEx3()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-3"></div>
+  </div>`;
+}
+function hintEx3(){
+  showFeedback('fb-3', 'hint', 'El return se va de la función SIN pasar por el sem_signal de más abajo. Necesitás liberar el semáforo (sem_signal) justo antes de ese return, no solo al final de la función.');
+}
+function checkEx3(){
+  const v = norm(document.getElementById('e3answer').value);
+  const tieneReturn = /return\s*;/.test(v);
+  const idxSignal = v.search(/sem_signal\s*\(\s*&mutex_buffer\s*\)/);
+  const idxReturn = v.search(/return\s*;/);
+  if (tieneReturn && idxSignal !== -1 && idxSignal < idxReturn){
+    showFeedback('fb-3', 'ok', '<b>¡Exacto!</b> Agregando <code>sem_signal(&mutex_buffer)</code> ANTES del <code>return</code>, el semáforo se libera sin importar por qué camino salga la función. Este tipo de bug (un "return" que se salta la liberación) es muy común en código real.');
+    markSolved(3);
+  } else if (!tieneReturn) {
+    showFeedback('fb-3', 'bad', 'Tu respuesta debería seguir teniendo el <code>return;</code> (los datos siguen sin ser válidos) — solo hay que agregar la liberación del semáforo antes de irse.');
+  } else {
+    showFeedback('fb-3', 'bad', 'Falta (o está mal ubicado) el <code>sem_signal(&mutex_buffer)</code> — tiene que ejecutarse ANTES del return, dentro del if.');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 4 — productor-consumidor con orden invertido
+   ============================================================ */
+function buildEx4(){
+  return `
+  <div class="exercise-head"><div class="exercise-num">4</div><h3>El productor-consumidor mal escrito</h3><span class="badge-diff">medio</span></div>
+  <div class="exercise-body">
+    <p class="desc">Esta versión de <code>producir()</code> puede interbloquearse si el buffer está lleno:</p>
+    <div class="code-block">
+<span class="c-dim">void producir(int dato) {</span>
+    sem_wait(&mutex);        <span class="c-red">← orden invertido</span>
+    sem_wait(&vacios);
+    buffer[pos_in] = dato;
+    pos_in = (pos_in + 1) % TAM_BUFFER;
+    sem_signal(&vacios);
+    sem_signal(&mutex);
+<span class="c-dim">}</span>
+    </div>
+    <p class="desc">Reescribí SOLO las 2 líneas de <code>sem_wait</code>, en el orden correcto (visto en la Clase 6):</p>
+    <textarea class="blank-input" id="e4answer" placeholder="sem_wait(...);
+sem_wait(...);"></textarea>
+    <div class="actions">
+      <button class="btn-entregar" onclick="checkEx4()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-hint" onclick="hintEx4()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-4"></div>
+  </div>`;
+}
+function hintEx4(){
+  showFeedback('fb-4', 'hint', 'Si el buffer está lleno (vacios = 0) y el productor ya tomó el mutex antes de pedir vacios, se queda esperando espacio CON el mutex tomado — bloqueando también al consumidor, que necesita el mutex para liberar espacio. Hay que pedir primero el recurso que puede no estar disponible.');
+}
+function checkEx4(){
+  const v = norm(document.getElementById('e4answer').value);
+  const idxVacios = v.search(/sem_wait\s*\(\s*&vacios\s*\)/);
+  const idxMutex = v.search(/sem_wait\s*\(\s*&mutex\s*\)/);
+  if (idxVacios !== -1 && idxMutex !== -1 && idxVacios < idxMutex){
+    showFeedback('fb-4', 'ok', '<b>¡Correcto!</b> Pidiendo primero <code>vacios</code> y después <code>mutex</code>, si no hay espacio el productor espera SIN tener el mutex tomado — el consumidor puede seguir liberando espacio con total libertad.');
+    markSolved(4);
+  } else {
+    showFeedback('fb-4', 'bad', 'Revisá el orden: primero tiene que ir <code>sem_wait(&vacios)</code>, y recién después <code>sem_wait(&mutex)</code> — exactamente al revés de como estaba.');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 5 — algoritmo del banquero, mini cálculo
+   ============================================================ */
+function buildEx5(){
+  return `
+  <div class="exercise-head"><div class="exercise-num">5</div><h3>¿Es un estado seguro?</h3><span class="badge-diff">difícil</span></div>
+  <div class="exercise-body">
+    <p class="desc">Hay 12 unidades de un mismo recurso en total. Situación actual:</p>
+    <div class="code-block">
+<span class="c-dim">           Máximo   Asignado   Podría necesitar todavía</span>
+Proceso A     8         4              4
+Proceso B     6         3              3
+Proceso C     9         3              6
+
+Disponibles ahora mismo: 12 - 4 - 3 - 3 = 2
+    </div>
+    <p class="desc">Con solo 2 unidades disponibles, ¿hay algún proceso al que el sistema le pueda dar lo que le falta para terminar? Escribí cuál (A, B o C) — o "ninguno" si te parece que no hay forma de continuar sin riesgo:</p>
+    <input class="blank-input" id="e5answer" placeholder="A, B, C o ninguno">
+    <div class="actions">
+      <button class="btn-entregar" onclick="checkEx5()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-hint" onclick="hintEx5()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-5"></div>
+  </div>`;
+}
+function hintEx5(){
+  showFeedback('fb-5', 'hint', 'Con 2 disponibles, ¿cuál de los 3 procesos necesita 2 o menos para terminar? Fijate en la columna "podría necesitar todavía" — solo uno de los tres pide igual o menos que lo disponible.');
+}
+function checkEx5(){
+  const v = norm(document.getElementById('e5answer').value);
+  if (/^b$/.test(v) || v === 'b'){
+    showFeedback('fb-5', 'ok', '<b>¡Correcto, es B!</b> B necesita 3 más para terminar — pero pensándolo de nuevo: hay 2 disponibles, y B necesita 3. En realidad ni B puede terminar con solo 2 disponibles.<br><br><b>Aclaración importante:</b> con estos números, en realidad NINGÚN proceso puede completarse con solo 2 unidades disponibles (A necesita 4, B necesita 3, C necesita 6) — este es justamente un estado <b>inseguro</b>, aunque todavía no sea un interbloqueo confirmado. Si elegiste "ninguno", esa era la respuesta más precisa.');
+    markSolved(5);
+  } else if (/ningun/.test(v)) {
+    showFeedback('fb-5', 'ok', '<b>¡Exacto, "ninguno" es la respuesta más precisa!</b> Con 2 disponibles, A necesita 4 más, B necesita 3 más, y C necesita 6 más — ningún proceso puede completarse todavía. Es un <b>estado inseguro</b>: el algoritmo del banquero NO concedería más recursos hasta que alguno libere lo que ya tiene.');
+    markSolved(5);
+  } else {
+    showFeedback('fb-5', 'bad', 'Revisá de nuevo la columna "podría necesitar todavía" de cada proceso, comparada con las 2 unidades disponibles — ¿alguno de los 3 pide 2 o menos?');
+  }
+}
+
+/* ============================================================
+   EJERCICIO 6 — 3 procesos, 3 recursos, ciclo de espera
+   ============================================================ */
+function buildEx6(){
+  return `
+  <div class="exercise-head"><div class="exercise-num">6</div><h3>Desafío final: el ciclo de 3</h3><span class="badge-diff">difícil</span></div>
+  <div class="exercise-body">
+    <p class="desc">3 procesos, 3 semáforos (X, Y, Z). Así están escritos hoy:</p>
+    <div class="code-block">
+Proceso 1: sem_wait(&X); sem_wait(&Y);
+Proceso 2: sem_wait(&Y); sem_wait(&Z);
+Proceso 3: sem_wait(&Z); sem_wait(&X);
+    </div>
+    <p class="desc">Esto forma un ciclo de espera circular entre los 3 (1 espera a 2, 2 espera a 3, 3 espera a 1). La prevención es la misma que ya usaste: definir un ORDEN GLOBAL para los recursos y hacer que todos lo respeten. Escribí en qué orden deberían pedirse X, Y, Z para romper el ciclo (por ejemplo: "X, Y, Z"):</p>
+    <input class="blank-input" id="e6answer" placeholder="orden de los 3 recursos, separados por coma">
+    <div class="actions">
+      <button class="btn-entregar" onclick="checkEx6()"><i class="fa-solid fa-paper-plane"></i> Entregar respuesta</button>
+      <button class="btn-hint" onclick="hintEx6()"><i class="fa-solid fa-lightbulb"></i> Pista</button>
+    </div>
+    <div class="feedback" id="fb-6"></div>
+  </div>`;
+}
+function hintEx6(){
+  showFeedback('fb-6', 'hint', 'No importa CUÁL orden elijas (X,Y,Z o Z,Y,X, etc.) — lo importante es que sea el MISMO para los 3 procesos. Ahora mismo el Proceso 3 pide Z antes que X, rompiendo cualquier orden que los otros dos ya respetan (X antes que Y, Y antes que Z).');
+}
+function checkEx6(){
+  const v = norm(document.getElementById('e6answer').value);
+  const letras = v.match(/[xyz]/g);
+  if (letras && new Set(letras).size === 3 && letras.length === 3){
+    showFeedback('fb-6', 'ok',
+      `<b>¡Cualquier orden fijo de los 3 sirve!</b> Elegiste "${letras.join(', ').toUpperCase()}" — lo importante es que los 3 procesos pidan SIEMPRE en ese mismo orden. Por ejemplo, con el orden X→Y→Z: el Proceso 3 tendría que cambiar a <code>sem_wait(&X); sem_wait(&Z);</code> en vez de pedir Z antes que X — así nunca se cierra el ciclo.`);
+    markSolved(6);
+  } else {
+    showFeedback('fb-6', 'bad', 'Escribí los 3 recursos (X, Y, Z) en algún orden, separados por coma — por ejemplo "X, Y, Z". Cualquier orden fijo funciona, mientras sea el mismo para los 3 procesos.');
+  }
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const builders = [buildEx1, buildEx2, buildEx3, buildEx4, buildEx5, buildEx6];
+const container = document.getElementById('exercises');
+builders.forEach((fn, i) => {
+  const div = document.createElement('div');
+  div.className = 'exercise locked animate__animated animate__fadeInUp';
+  div.id = 'ex-' + (i + 1);
+  div.innerHTML = fn();
+  container.appendChild(div);
+});
+updateProgress();
+
+/* ============================================================
+   CODIGO DE ENTREGA
+   ============================================================ */
+const swalBase = { background: 'var(--bg-1)', color: 'var(--text)', customClass: { popup: 'so-popup', title: 'so-title' }, confirmButtonColor: '#c24a5a', cancelButtonColor: '#6d7c8c' };
+
+async function generarCodigoEntrega(){
+  const { value: nombre } = await Swal.fire({ ...swalBase, title: 'Tu nombre', input: 'text', inputPlaceholder: 'Nombre y apellido', inputValidator: (v) => !v && 'Ingresá tu nombre para generar el código', confirmButtonText: 'Generar código' });
+  if (!nombre) return;
+  const fecha = new Date();
+  const fechaStr = `${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
+  const iniciales = nombre.trim().split(/\s+/).map(p => p[0].toUpperCase()).join('').slice(0,4);
+  const codigo = `SO-DEADLOCK-${fechaStr}-${iniciales}-${solved.size}${TOTAL}`;
+  document.getElementById('codigo-entrega-final').innerHTML = `
+    <div class="code-block" style="text-align:center; font-size:1rem;">${codigo}</div>
+    <p style="color:var(--text-dim); font-size:.8rem; margin-top:8px;">Copiá este código y enviámelo por el canal del curso.</p>
+  `;
+}
+</script>
+</body>
+</html>

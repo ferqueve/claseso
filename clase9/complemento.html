@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complemento · Entendiendo el Interbloqueo</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f; --bg-1:#0d131b; --bg-2:#121a24; --panel-border:#1f2b38;
+  --green:#39ff88; --green-dim:#1f8a52; --amber:#ffb454; --cyan:#5ccfe6;
+  --wine:#c24a5a; --wine-dim:#6b2530; --red:#ff5c7a;
+  --text:#dbe4ea; --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace; --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{min-height:100%;}
+body{
+  margin:0; background:
+    radial-gradient(ellipse at top left, rgba(194,74,90,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text); font-family:var(--display);
+}
+::selection{ background:var(--wine); color:#1c0509; }
+.crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:500; background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; }
+
+.statusbar{ position:sticky; top:0; z-index:200; height:46px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:linear-gradient(180deg, rgba(13,19,27,0.97), rgba(13,19,27,0.85)); border-bottom:1px solid var(--panel-border); font-family:var(--mono); font-size:12.5px; color:var(--text-dim); backdrop-filter:blur(4px); }
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--wine); box-shadow:0 0 6px var(--wine); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+.wrap{ max-width:880px; margin:0 auto; padding:36px 20px 90px 20px; }
+
+.hero{ text-align:center; margin-bottom:32px; }
+.eyebrow{ font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--wine); display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; }
+.eyebrow::before, .eyebrow::after{ content:'//'; color:var(--text-dim); }
+h1.mega{ font-size:2.2rem; font-weight:700; margin:0 0 8px 0; }
+h1.mega .accent{ color:var(--wine); }
+.hero p{ color:var(--text-dim); font-size:1rem; max-width:640px; margin:0 auto; }
+
+.seccion{ margin-bottom:30px; }
+.seccion .num-tag{ font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--wine); margin-bottom:8px; }
+.seccion h2{ font-size:1.4rem; margin:0 0 14px 0; }
+.seccion h2 .accent{ color:var(--wine); }
+
+.panel{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:10px; padding:20px 24px; position:relative; margin-bottom:16px; }
+.panel::before{ content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, rgba(194,74,90,.4), transparent); }
+.term-tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px; background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:16px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:16px; }
+.card-min i{ color:var(--cyan); font-size:1.2rem; margin-bottom:6px; display:block; }
+.card-min h4{ font-size:.95rem; margin-bottom:3px; }
+.card-min p{ font-size:.82rem; color:var(--text-dim); margin:0; }
+
+.code-block{ background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:16px 18px; font-family:var(--mono); font-size:.82rem; color:var(--cyan); overflow-x:auto; white-space:pre; line-height:1.7; margin-bottom:16px; }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-red{ color:var(--red); }
+.code-block .c-green{ color:var(--green); }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:8px 0 8px 28px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:.96rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:8px; font-size:.82rem; }
+
+.btn-quiz{ background:transparent; border:1px solid var(--wine-dim); color:var(--wine); font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s; }
+.btn-quiz:hover{ background:var(--wine); color:#1c0509; }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.05rem !important; color:var(--wine) !important; }
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> COMPLEMENTO · CLASE 9 — INTERBLOQUEOS</div>
+</div>
+
+<div class="wrap">
+  <div class="hero animate__animated animate__fadeIn">
+    <div class="eyebrow">material adicional, no reemplaza la clase</div>
+    <h1 class="mega">Entendiendo el <span class="accent">Interbloqueo</span></h1>
+    <p>Este complemento profundiza en una sola idea: qué es exactamente un interbloqueo y por qué pasa. Es para reforzar la Clase 9, no para reemplazarla.</p>
+  </div>
+
+  <div class="seccion animate__animated animate__fadeInUp">
+    <div class="num-tag">1 · la idea, bien simple</div>
+    <h2>El puente de <span class="accent">un solo carril</span></h2>
+    <div class="panel">
+      <p style="font-size:1.02rem; line-height:1.7; margin:0;">
+        Imaginate un puente angosto, de un solo carril, donde entran autos desde los dos extremos al mismo
+        tiempo. El auto A avanza desde la izquierda, el auto B avanza desde la derecha. Se cruzan justo en
+        el medio del puente — y ahí quedan <b>trabados</b>: A no puede seguir porque B le tapa el paso, B no
+        puede seguir porque A le tapa el paso a él. Y ninguno de los dos puede retroceder, porque el puente es
+        tan angosto que no hay forma de dar la vuelta.
+      </p>
+    </div>
+    <div class="grid-cards">
+      <div class="card-min"><i class="fa-solid fa-car"></i><h4>Auto A</h4><p>Ya cruzó la mitad del puente — no puede volver atrás</p></div>
+      <div class="card-min"><i class="fa-solid fa-car-side"></i><h4>Auto B</h4><p>Lo mismo, desde el otro lado</p></div>
+      <div class="card-min"><i class="fa-solid fa-triangle-exclamation"></i><h4>El resultado</h4><p>Los dos se quedan ahí para siempre, a menos que alguien externo intervenga</p></div>
+    </div>
+    <div class="panel">
+      <div class="term-tag">llevándolo a procesos</div>
+      <p style="margin:0;">Reemplazá "puente" por <b>semáforo</b>, y "auto" por <b>proceso</b>: cada proceso ya "cruzó la mitad" (tiene un semáforo tomado) cuando pide el segundo — y ese segundo lo tiene el otro proceso, que a su vez espera el primero.</p>
+    </div>
+  </div>
+
+  <div class="seccion animate__animated animate__fadeInUp">
+    <div class="num-tag">2 · el mismo problema, en código</div>
+    <h2>Dos procesos, <span class="accent">esperando eternamente</span></h2>
+    <div class="code-block">
+<span class="c-dim">// Proceso A:</span>              <span class="c-dim">// Proceso B:</span>
+sem_wait(&semaforo_1);      sem_wait(&semaforo_2);
+sem_wait(&semaforo_2);      sem_wait(&semaforo_1);
+<span class="c-red">// ... A espera semaforo_2, que B tiene</span>
+<span class="c-red">// ... B espera semaforo_1, que A tiene</span>
+<span class="c-red">// interbloqueo</span>
+    </div>
+  </div>
+
+  <div class="seccion animate__animated animate__fadeInUp">
+    <div class="num-tag">3 · viéndolo pasar, instrucción por instrucción</div>
+    <h2>Así se arma la <span class="accent">trampa</span>, paso a paso</h2>
+    <div class="panel">
+      <p style="margin:0;">El scheduler no sabe que está a punto de crear un interbloqueo — simplemente alterna entre A y B, como hace siempre. Este es el orden exacto que lleva al problema:</p>
+    </div>
+    <div class="code-block">
+<span class="c-dim">Paso   Proceso A                    Proceso B                    Estado</span>
+1      sem_wait(semaforo_1)  OK    —                            A tiene semaforo_1
+2      (se interrumpe acá)         sem_wait(semaforo_2)  OK     B tiene semaforo_2
+3      sem_wait(semaforo_2)  ...   —                            A queda esperando (lo tiene B)
+4      —                            sem_wait(semaforo_1)  ...    B queda esperando (lo tiene A)
+5      <span class="c-red">A espera a B, B espera a A — ninguno de los dos puede seguir. Interbloqueo.</span>
+    </div>
+    <div class="panel">
+      <div class="term-tag">el detalle que lo causa</div>
+      <p style="margin:0;">Ninguno de los dos hizo nada "mal" por separado — el problema es el <b>orden cruzado</b>: A pide primero 1 y después 2; B pide primero 2 y después 1. Si ambos hubieran pedido en el mismo orden, esto nunca podría pasar (es la prevención que ya vieron en la Clase 9).</p>
+    </div>
+  </div>
+
+  <div class="seccion animate__animated animate__fadeInUp">
+    <div class="num-tag">4 · las 4 condiciones, ahora concretas</div>
+    <h2>Coffman, aplicado al <span class="accent">puente</span></h2>
+    <div class="panel">
+      <ul class="checklist">
+        <li><b>Exclusión mutua:</b> el puente es de un solo carril — dos autos no pueden ocupar el mismo tramo (un semáforo no puede estar tomado por dos procesos a la vez)</li>
+        <li><b>Retención y espera:</b> A ya está sobre el puente (tiene semaforo_1) cuando pide seguir avanzando (semaforo_2)</li>
+        <li><b>No apropiación:</b> nadie puede sacar a la fuerza al auto A del puente para que B pase (nadie le puede "robar" el semáforo a un proceso)</li>
+        <li><b>Espera circular:</b> A espera a B, B espera a A — un ciclo cerrado de 2</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="seccion animate__animated animate__fadeInUp" style="text-align:center; padding-top:1rem;">
+    <button class="btn-quiz" onclick="quizComplemento()"><i class="fa-solid fa-play"></i> Autoevaluarme (3 preguntas)</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+<script>
+const swalBase = { background: 'var(--bg-1)', color: 'var(--text)', customClass: { popup: 'so-popup', title: 'so-title' }, confirmButtonColor: '#c24a5a', cancelButtonColor: '#6d7c8c' };
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({ ...swalBase, title, html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`, input: 'radio', inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])), inputValidator: (v)=> !v && '¡Elegí una opción!', confirmButtonText: 'Responder' });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({ ...swalBase, icon: correct ? 'success' : 'error', title: correct ? '¡Correcto!' : 'No exactamente...', html: `<p style="color:var(--text-dim);">${explain}</p>`, confirmButtonText: 'Seguir' });
+  return correct;
+}
+
+async function quizComplemento(){
+  await askMC(
+    'El puente',
+    'En la analogía del puente, ¿qué representa cada auto trabado a mitad de camino?',
+    ['Un semáforo tomado','Un proceso que ya tiene un recurso y pide otro','Un scheduler bloqueado','Una interrupción de hardware'], 1,
+    'Cada auto representa un <b>proceso</b> que ya tiene un recurso (cruzó parte del puente) y necesita otro para seguir (el resto del puente).'
+  );
+  await askMC(
+    'La causa real',
+    '¿Por qué se arma el interbloqueo en el ejemplo de los 2 semáforos, si ninguno de los 2 procesos hizo nada "mal" por separado?',
+    ['Porque uno de los procesos tiene un bug','Porque piden los mismos 2 recursos en orden cruzado (1 luego 2, y 2 luego 1)','Porque el scheduler es cooperativo','Porque faltó inicializar un semáforo'], 1,
+    'El problema es el <b>orden cruzado</b> en que cada proceso pide los recursos — no un error de código en ninguno de los dos por separado.'
+  );
+  await askMC(
+    'Coffman en el puente',
+    '¿Qué condición de Coffman representa que "nadie puede sacar a la fuerza al auto A del puente"?',
+    ['Exclusión mutua','Retención y espera','No apropiación','Espera circular'], 2,
+    'La <b>no apropiación</b> es justamente eso: ningún recurso se le puede quitar a la fuerza a un proceso que lo tiene tomado.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Listo!', text:'Con esto, la idea de interbloqueo debería quedar bien afianzada.'});
+}
+</script>
+</body>
+</html>

@@ -363,6 +363,65 @@ addSlide(`
 
 addSlide(`
 <div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · pic.c</div>
+  <h1 class="title">Ahora sí: <span class="accent-amber">pic_desenmascarar_irq()</span></h1>
+  <div class="panel">
+    <p>La máscara del PIC funciona bit a bit: <b>1 = IRQ bloqueada</b>, <b>0 = IRQ permitida</b>. Si <code>pic_remapear()</code> dejó todo en <code>0xFF</code>, el driver debe borrar solamente el bit de su IRQ.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px; font-size:.83rem;">
+<span class="c-dim">// pic.c — habilitar solo la línea IRQ que el driver necesita</span>
+<span class="c-lime">void</span> pic_desenmascarar_irq(<span class="c-lime">unsigned char</span> irq) {
+    <span class="c-lime">unsigned char</span> mascara;
+
+    <span class="c-lime">if</span> (irq &lt; <span class="c-amber">8</span>) {
+        mascara = inb(PIC1_DATOS);        <span class="c-dim">// 0x21: máscara del PIC maestro</span>
+        mascara &amp;= ~(<span class="c-amber">1</span> &lt;&lt; irq);        <span class="c-dim">// poner ese bit en 0</span>
+        outb(PIC1_DATOS, mascara);
+    } <span class="c-lime">else</span> {
+        irq -= <span class="c-amber">8</span>;
+        mascara = inb(PIC2_DATOS);        <span class="c-dim">// 0xA1: máscara del PIC esclavo</span>
+        mascara &amp;= ~(<span class="c-amber">1</span> &lt;&lt; irq);
+        outb(PIC2_DATOS, mascara);
+
+        <span class="c-dim">// si habilito IRQ8-15, también debo abrir la cascada IRQ2 del maestro</span>
+        mascara = inb(PIC1_DATOS);
+        mascara &amp;= ~(<span class="c-amber">1</span> &lt;&lt; <span class="c-amber">2</span>);
+        outb(PIC1_DATOS, mascara);
+    }
+}
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">cómo se usa desde el driver</div>
+  <h1 class="title">El teclado habilita <span class="accent">solo IRQ1</span></h1>
+  <div class="panel">
+    <p>Después de instalar la entrada de la IDT para el vector 33, recién ahí abrimos la línea de interrupción del teclado. El orden importa: primero existe el manejador, después llega la interrupción.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// keyboard.c</span>
+<span class="c-lime">void</span> teclado_instalar(<span class="c-lime">void</span>) {
+    idt_set_gate(<span class="c-amber">33</span>, (<span class="c-lime">unsigned int</span>) irq1_teclado);
+    pic_desenmascarar_irq(<span class="c-amber">1</span>);   <span class="c-dim">// IRQ1 = teclado</span>
+}
+
+<span class="c-dim">// kernel.c</span>
+pic_remapear();       <span class="c-dim">// deja todo bloqueado</span>
+idt_instalar();
+teclado_instalar();   <span class="c-dim">// abre solo el teclado</span>
+asm <span class="c-amber">volatile</span>(<span class="c-red">"sti"</span>); <span class="c-dim">// habilita interrupciones en la CPU</span>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--amber);">
+    <div class="term-tag" style="border-color:var(--amber); color:var(--amber);">regla práctica</div>
+    <p style="margin:0;">Nunca ejecutes <code>sti</code> ni desenmascares una IRQ antes de tener su handler instalado en la IDT.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
   <div class="eyebrow">laboratorio · idt.c</div>
   <h1 class="title">La <span class="accent-amber">IDT</span>: la GDT de las interrupciones</h1>
   <div class="panel">
@@ -599,6 +658,12 @@ async function quizModulo2(){
     '¿Por qué la primera versión de pic_remapear() causaba un triple fault?',
     ['Dejaba el timer (IRQ0) desenmascarado sin tener un manejador instalado para su vector','Por usar de forma incorrecta el operador módulo','Por un simple error de tipeo en el código fuente','Porque QEMU en particular no soporta bien el PIC'], 0,
     'El timer (IRQ0) venía desenmascarado de fábrica; sin manejador instalado, la primera interrupción de timer causó una excepción sin manejar → triple fault.'
+  );
+  await askMC(
+    'Máscara del PIC',
+    'En la máscara del PIC, ¿qué significa que el bit de una IRQ esté en 0?',
+    ['Que esa IRQ queda habilitada','Que esa IRQ queda bloqueada','Que se borra la IDT completa','Que se reinicia el PIC'], 0,
+    'En la máscara del PIC, 1 bloquea y 0 permite. Desenmascarar una IRQ es borrar su bit correspondiente.'
   );
   await askMC(
     'IDT',

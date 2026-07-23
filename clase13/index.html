@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Clase 13 — Disco real y persistencia</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg-0:#070a0f;--bg-1:#0d131b;--bg-2:#121a24;--panel-border:#1f2b38;--green:#39ff88;--amber:#ffb454;--cyan:#5ccfe6;--accent:#00d1b2;--accent-dim:#087968;--red:#ff5c7a;--text:#dbe4ea;--text-dim:#6d7c8c;--mono:'JetBrains Mono',monospace;--display:'Space Grotesk',sans-serif;}
+*{box-sizing:border-box} html,body{height:100%} body{margin:0;background:radial-gradient(ellipse at top left, color-mix(in srgb, var(--accent) 12%, transparent), transparent 45%),radial-gradient(ellipse at bottom right, rgba(57,255,136,.05), transparent 50%),var(--bg-0);color:var(--text);font-family:var(--display);overflow:hidden;height:100vh} ::selection{background:var(--accent);color:#061018}
+.crt-overlay{position:fixed;inset:0;pointer-events:none;z-index:500;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.015) 0px,rgba(255,255,255,.015) 1px,transparent 1px,transparent 3px);mix-blend-mode:overlay}
+.statusbar{position:fixed;top:0;left:0;right:0;height:42px;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(180deg,rgba(13,19,27,.95),rgba(13,19,27,.75));border-bottom:1px solid var(--panel-border);font-family:var(--mono);font-size:12.5px;color:var(--text-dim)} .statusbar .seg{display:flex;align-items:center;gap:8px} .statusbar .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);animation:pulse 1.8s infinite} @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}} .statusbar .cursor{display:inline-block;width:7px;background:var(--green);margin-left:2px;animation:blink 1s steps(1) infinite} @keyframes blink{50%{opacity:0}}
+#module-badge{font-weight:700;padding:2px 10px;border-radius:3px;border:1px solid currentColor} .mod-teoria{color:var(--cyan)} .mod-practica{color:var(--amber)} .progress-rail{position:fixed;top:42px;left:0;right:0;height:3px;background:var(--bg-2);z-index:200} .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));box-shadow:0 0 8px var(--accent);transition:width .5s ease}
+.deck{position:relative;height:100vh;width:100vw;padding-top:45px} .slide{position:absolute;inset:0;top:45px;display:none;padding:38px 64px 74px;overflow-y:auto} .slide.active{display:block} .slide-inner{max-width:1180px;margin:0 auto} .eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:10px;margin-bottom:14px} .eyebrow::before{content:'//';color:var(--text-dim)} h1.title{font-size:2.5rem;font-weight:700;margin:0 0 .3rem;line-height:1.1} .mega{font-size:4.2rem;font-weight:700;line-height:.95;letter-spacing:-.04em;margin:0 0 18px} .subtitle{font-size:1.18rem;color:var(--text-dim);max-width:860px} .accent{color:var(--accent)} .accent-amber{color:var(--amber)} .accent-cyan{color:var(--cyan)} .kernel{color:var(--green)} .panel{background:linear-gradient(180deg,rgba(18,26,36,.84),rgba(13,19,27,.9));border:1px solid var(--panel-border);border-radius:14px;padding:20px;box-shadow:0 0 0 1px rgba(255,255,255,.015),0 18px 40px rgba(0,0,0,.18)} .grid-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px} @media(max-width:900px){.grid-cards{grid-template-columns:1fr}.slide{padding:30px 24px 74px}.mega{font-size:3rem}}
+.card-min{background:rgba(7,10,15,.55);border:1px solid var(--panel-border);border-radius:12px;padding:18px;height:100%} .card-min i{font-size:1.6rem;color:var(--accent);margin-bottom:12px} .card-min h4{font-size:1.05rem;font-weight:700;margin:0 0 8px} .card-min p{color:var(--text-dim);margin:0;line-height:1.55} .checklist{list-style:none;padding-left:0;margin:0} .checklist li{padding:8px 0 8px 28px;position:relative;line-height:1.55} .checklist li::before{content:'>';position:absolute;left:0;color:var(--accent);font-family:var(--mono);font-weight:700} .code-block{font-family:var(--mono);font-size:.9rem;white-space:pre-wrap;line-height:1.42;background:#05080c;border:1px solid #263344;border-radius:14px;padding:18px;color:#dbe4ea;box-shadow:inset 0 0 30px rgba(0,0,0,.35)} .c-dim{color:#6d7c8c} .c-lime{color:#9ee85a} .c-amber{color:#ffb454} .c-cyan{color:#5ccfe6} .c-red{color:#ff5c7a} .term-tag{display:inline-block;font-family:var(--mono);font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:3px 9px;margin-bottom:10px} .cover,.mod-hero{min-height:calc(100vh - 160px);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;max-width:1180px;margin:0 auto} .boot-lines{font-family:var(--mono);font-size:.82rem;color:var(--text-dim);background:rgba(0,0,0,.25);border:1px solid var(--panel-border);border-radius:12px;padding:14px 18px;margin-bottom:22px;min-width:min(720px,100%)} .ok{color:var(--green)} .navbtn{position:fixed;bottom:18px;z-index:220;background:rgba(13,19,27,.8);border:1px solid var(--panel-border);color:var(--text);border-radius:10px;width:42px;height:42px} #prevBtn{right:72px} #nextBtn{right:18px} .slide-counter{position:fixed;bottom:22px;left:18px;z-index:220;font-family:var(--mono);color:var(--text-dim)} .slide-dots{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:220} .dotnav{width:7px;height:7px;border-radius:50%;background:#344454} .dotnav.on{background:var(--accent);box-shadow:0 0 8px var(--accent)} .btn-quiz{font-family:var(--mono);font-weight:700;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:999px;padding:12px 18px} .btn-quiz:hover{background:rgba(255,255,255,.05)}
+</style>
+</head><body><div class="crt-overlay"></div><div class="statusbar"><div class="seg"><span class="dot"></span><span>toy-os://clase_13</span><span class="cursor">&nbsp;</span></div><div class="seg"><span id="module-badge" class="mod-teoria">MÓDULO 1 · TEORÍA</span><span id="clockLabel"></span></div></div><div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div><main class="deck" id="deck"></main><button class="navbtn" id="prevBtn"><i class="fa-solid fa-arrow-left"></i></button><button class="navbtn" id="nextBtn"><i class="fa-solid fa-arrow-right"></i></button><div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div><div class="slide-dots" id="dotsWrap"></div><script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script><script>
+const slides=[];function addSlide(html,opts={}){slides.push({html,module:opts.module||1,mtype:opts.mtype||'teoria',clock:opts.clock||''})}
+addSlide(`
+<div class="cover animate__animated animate__fadeIn"><div class="boot-lines"><div>[ <span class="ok">OK</span> ] Detectando segundo disco ............... data.img</div><div>[ <span class="ok">OK</span> ] Cambiando backend de bloques ........ RAM → ATA PIO</div><div>[ <span class="ok">OK</span> ] Probando persistencia ................ reinicio seguro</div></div><div class="eyebrow">boot sequence · clase_13</div><h1 class="mega">Disco real<br><span class="kernel">/ persistencia</span></h1><h2 class="subtitle" style="margin-top:1rem;">Del disco simulado en RAM a sectores que sobreviven al reinicio</h2><div style="font-family:var(--mono);font-size:.85rem;color:var(--text-dim);"><i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> para navegar</div></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:35'});
+
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">problema real</div><h1 class="title">Nuestro disco RAM <span class="accent">funciona</span>, pero no recuerda</h1><div class="panel"><ul class="checklist"><li>Hoy el sistema de archivos vive dentro de <code>disco_ram[NUM_BLOQUES][TAM_BLOQUE]</code>.</li><li>Sirve para aprender inodos, bitmap y bloques, pero al reiniciar la VM desaparece todo.</li><li>La meta: conservar la misma API del sistema de archivos y cambiar solamente el backend de bloques.</li></ul></div></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:35'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">arquitectura</div><h1 class="title">Separar <span class="accent">sistema de archivos</span> de <span class="accent-amber">driver</span></h1><div class="grid-cards"><div class="card-min"><i class="fa-solid fa-file-lines"></i><h4>FS</h4><p>crear, escribir, leer, listar. No debería saber si abajo hay RAM o disco.</p></div><div class="card-min"><i class="fa-solid fa-cubes"></i><h4>Bloques</h4><p><code>bloque_leer(n, buf)</code> y <code>bloque_escribir(n, buf)</code>.</p></div><div class="card-min"><i class="fa-solid fa-hard-drive"></i><h4>Driver</h4><p>Traduce bloque lógico a sector físico mediante puertos ATA.</p></div></div><div class="panel" style="margin-top:16px"><div class="term-tag">idea clave</div><p style="margin:0">El FS queda casi igual. La persistencia aparece cuando esos bloques dejan de estar en RAM y pasan a un archivo de disco conectado a QEMU.</p></div></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:35'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">QEMU</div><h1 class="title">Agregar un disco de datos <span class="accent">real</span></h1><div class="panel"><p>Para no mezclar el disco de arranque con los datos del sistema de archivos, usamos un segundo disco crudo. QEMU lo expone como un dispositivo IDE adicional.</p></div><div class="code-block" style="margin-top:16px;"># crear un disco de 16 MB para datos
+qemu-img create -f raw data.img 16M
+
+# arrancar con el disco del SO + disco de datos
+qemu-system-i386 \
+  -drive file=os.img,format=raw,index=0,media=disk \
+  -drive file=data.img,format=raw,index=1,media=disk</div><div class="panel" style="margin-top:16px;border-color:var(--amber)"><div class="term-tag" style="border-color:var(--amber);color:var(--amber)">persistencia</div><p style="margin:0">Si escribís un archivo, apagás QEMU y volvés a arrancar con el mismo <code>data.img</code>, los sectores siguen ahí.</p></div></div>`,{module:1,mtype:'practica',clock:'18:15 – 19:35'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">ATA PIO · alcance didáctico</div><h1 class="title">La versión simple: <span class="accent">PIO + polling</span></h1><div class="panel"><p>No vamos a implementar AHCI, NVMe, DMA ni interrupciones de disco. Para el curso alcanza un driver ATA PIO mínimo: el CPU manda un comando, espera al estado del disco y transfiere 256 palabras de 16 bits por sector.</p></div><div class="grid-cards" style="margin-top:16px"><div class="card-min"><i class="fa-solid fa-plug"></i><h4>Puerto base</h4><p>Bus IDE primario: <code>0x1F0</code> a <code>0x1F7</code>.</p></div><div class="card-min"><i class="fa-solid fa-layer-group"></i><h4>Sector</h4><p>Trabajamos con sectores de 512 bytes, igual que <code>TAM_BLOQUE</code>.</p></div><div class="card-min"><i class="fa-solid fa-hourglass-half"></i><h4>Esperar</h4><p>Miramos <code>BSY</code> y <code>DRQ</code> en el registro de estado.</p></div></div></div>`,{module:2,mtype:'teoria',clock:'19:45 – 21:00'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">puertos ATA</div><h1 class="title">Mapa mínimo de registros</h1><div class="code-block">#define ATA_DATOS       0x1F0
+#define ATA_SECCOUNT    0x1F2
+#define ATA_LBA0        0x1F3
+#define ATA_LBA1        0x1F4
+#define ATA_LBA2        0x1F5
+#define ATA_DRIVE       0x1F6
+#define ATA_CMD_STATUS  0x1F7
+
+#define ATA_CMD_LEER    0x20
+#define ATA_CMD_ESCRIBIR 0x30
+#define ATA_SR_BSY      0x80
+#define ATA_SR_DRQ      0x08</div><div class="panel" style="margin-top:16px"><p style="margin:0">LBA28 permite direccionar sectores por número. Para nuestro disco de juguete sobra ampliamente.</p></div></div>`,{module:2,mtype:'practica',clock:'19:45 – 21:00'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">código base · sin includes</div><h1 class="title">Esperar a que el disco esté listo</h1><div class="code-block">typedef unsigned char  u8;
+typedef unsigned short u16;
+typedef unsigned int   u32;
+
+static void ata_esperar_listo(void) {
+    u8 estado;
+    do { estado = inb(ATA_CMD_STATUS); }
+    while (estado & ATA_SR_BSY);
+
+    do { estado = inb(ATA_CMD_STATUS); }
+    while (!(estado & ATA_SR_DRQ));
+}
+
+static void ata_delay_400ns(void) {
+    inb(ATA_CMD_STATUS); inb(ATA_CMD_STATUS);
+    inb(ATA_CMD_STATUS); inb(ATA_CMD_STATUS);
+}</div></div>`,{module:2,mtype:'practica',clock:'19:45 – 21:00'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">lectura de sector</div><h1 class="title">Leer 512 bytes desde <span class="accent">data.img</span></h1><div class="code-block" style="font-size:.82rem">int ata_leer_sector(u32 lba, u8 *buffer) {
+    outb(ATA_DRIVE, 0xF0 | ((lba >> 24) & 0x0F));  // slave: segundo disco
+    ata_delay_400ns();
+    outb(ATA_SECCOUNT, 1);
+    outb(ATA_LBA0, (u8)(lba));
+    outb(ATA_LBA1, (u8)(lba >> 8));
+    outb(ATA_LBA2, (u8)(lba >> 16));
+    outb(ATA_CMD_STATUS, ATA_CMD_LEER);
+    ata_esperar_listo();
+
+    for (int i = 0; i < 256; i++) {
+        u16 palabra = inw(ATA_DATOS);
+        buffer[i*2]     = (u8)(palabra & 0xFF);
+        buffer[i*2 + 1] = (u8)(palabra >> 8);
+    }
+    return 0;
+}</div></div>`,{module:2,mtype:'practica',clock:'19:45 – 21:00'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">escritura de sector</div><h1 class="title">Escribir un bloque persistente</h1><div class="code-block" style="font-size:.82rem">int ata_escribir_sector(u32 lba, const u8 *buffer) {
+    outb(ATA_DRIVE, 0xF0 | ((lba >> 24) & 0x0F));
+    ata_delay_400ns();
+    outb(ATA_SECCOUNT, 1);
+    outb(ATA_LBA0, (u8)(lba));
+    outb(ATA_LBA1, (u8)(lba >> 8));
+    outb(ATA_LBA2, (u8)(lba >> 16));
+    outb(ATA_CMD_STATUS, ATA_CMD_ESCRIBIR);
+    ata_esperar_listo();
+
+    for (int i = 0; i < 256; i++) {
+        u16 palabra = buffer[i*2] | ((u16)buffer[i*2 + 1] << 8);
+        outw(ATA_DATOS, palabra);
+    }
+    outb(ATA_CMD_STATUS, 0xE7); // flush cache
+    return 0;
+}</div><div class="panel" style="margin-top:16px;border-color:var(--red)"><div class="term-tag" style="border-color:var(--red);color:var(--red)">cuidado</div><p style="margin:0">Escribir en el LBA equivocado pisa bytes reales del disco. Por eso usamos <code>data.img</code> aparte, nunca el disco de arranque.</p></div></div>`,{module:2,mtype:'practica',clock:'19:45 – 21:00'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">adaptador de bloques</div><h1 class="title">Cambiar una sola capa</h1><div class="code-block">#define SECTOR_INICIO_FS  0
+#define TAM_BLOQUE        512
+
+int bloque_leer(int bloque, unsigned char *destino) {
+    return ata_leer_sector(SECTOR_INICIO_FS + bloque, destino);
+}
+
+int bloque_escribir(int bloque, const unsigned char *origen) {
+    return ata_escribir_sector(SECTOR_INICIO_FS + bloque, origen);
+}</div><div class="panel" style="margin-top:16px"><p style="margin:0">El resto del sistema de archivos debería llamar a <code>bloque_leer</code> y <code>bloque_escribir</code>, no tocar directamente <code>disco_ram</code>.</p></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">montaje</div><h1 class="title">¿Formatear o montar?</h1><div class="grid-cards"><div class="card-min"><i class="fa-solid fa-magic-wand-sparkles"></i><h4>Formatear</h4><p>Inicializa superbloque, bitmap, tabla de inodos y directorio raíz.</p></div><div class="card-min"><i class="fa-solid fa-box-open"></i><h4>Montar</h4><p>Lee esas estructuras desde disco. No las borra.</p></div><div class="card-min"><i class="fa-solid fa-signature"></i><h4>Magic number</h4><p>Permite saber si el disco ya tiene nuestro FS o si está vacío.</p></div></div><div class="code-block" style="margin-top:16px">#define FS_MAGIC 0x544F5953  // 'TOYS'
+
+void fs_iniciar(void) {
+    bloque_leer(0, buffer_superbloque);
+    if (((SuperBloque*)buffer_superbloque)->magic != FS_MAGIC) {
+        fs_formatear();
+    } else {
+        fs_montar();
+    }
+}</div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center;padding-top:6vh"><div class="eyebrow" style="justify-content:center">check de salida</div><h1 class="title"><i class="fa-solid fa-hard-drive accent"></i> Persistencia real</h1><p class="subtitle">Antes de cerrar: backend, sectores y montaje</p><button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso</button></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="cover animate__animated animate__fadeIn"><div class="eyebrow">fin de sesión</div><h1 class="mega">Ahora el kernel<br><span class="kernel">recuerda</span></h1><div class="panel" style="margin-top:20px;max-width:760px"><div class="term-tag">siguiente paso</div><ul class="checklist"><li>Probar crear un archivo, reiniciar QEMU y leerlo nuevamente.</li><li>Documentar qué funciones del FS todavía dependen de <code>disco_ram</code>.</li><li>La próxima presentación arma una shell mínima para usar el FS desde teclado.</li></ul></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+
+let current=0;const deck=document.getElementById('deck'),dotsWrap=document.getElementById('dotsWrap');slides.forEach((s,i)=>{const div=document.createElement('div');div.className='slide'+(i===0?' active':'');div.id='slide-'+i;div.innerHTML=s.html;deck.appendChild(div);const d=document.createElement('span');d.className='dotnav'+(i===0?' on':'');d.onclick=()=>goTo(i);dotsWrap.appendChild(d)});document.getElementById('counterTotal').textContent=slides.length;function render(){document.querySelectorAll('.slide').forEach((el,i)=>el.classList.toggle('active',i===current));document.querySelectorAll('.dotnav').forEach((d,i)=>d.classList.toggle('on',i===current));document.getElementById('counterNow').textContent=current+1;document.getElementById('progressFill').style.width=((current+1)/slides.length*100)+'%';const s=slides[current],badge=document.getElementById('module-badge');badge.textContent='MÓDULO '+s.module+' · '+(s.mtype==='teoria'?'TEORÍA':'PRÁCTICA');badge.className=s.mtype==='teoria'?'mod-teoria':'mod-practica';document.getElementById('clockLabel').textContent=s.clock}function goTo(i){if(i<0||i>=slides.length)return;current=i;render()}document.getElementById('nextBtn').onclick=()=>goTo(current+1);document.getElementById('prevBtn').onclick=()=>goTo(current-1);document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')goTo(current+1);if(e.key==='ArrowLeft')goTo(current-1)});render();
+const swalBase={background:'var(--bg-1)',color:'var(--text)',confirmButtonColor:'#00d1b2'};async function askMC(title,text,options,correctIndex,explain){const {value}=await Swal.fire({...swalBase,title,html:`<p style="text-align:left;color:var(--text-dim);margin-bottom:14px;">${text}</p>`,input:'radio',inputOptions:Object.fromEntries(options.map((o,i)=>[i,o])),inputValidator:v=>!v&&'¡Elegí una opción!',confirmButtonText:'Responder'});const correct=String(value)===String(correctIndex);await Swal.fire({...swalBase,icon:correct?'success':'error',title:correct?'¡Correcto!':'No exactamente...',html:`<p style="color:var(--text-dim);">${explain}</p>`,confirmButtonText:'Seguir'})}
+
+async function quizFinal(){
+ await askMC('Backend de bloques','¿Cuál es la ventaja de usar bloque_leer/bloque_escribir como capa intermedia?',['El FS puede mantenerse casi igual aunque cambie el dispositivo real','Hace que el disco sea más grande','Evita escribir código C','Reemplaza la IDT'],0,'La capa de bloques desacopla la lógica del sistema de archivos del dispositivo donde se guardan los bytes.');
+ await askMC('ATA PIO','En esta clase, ¿cómo esperamos al disco?',['Con polling del registro de estado','Con WiFi','Con malloc','Con interrupciones de teclado'],0,'La versión didáctica usa polling: espera BSY=0 y DRQ=1 antes de transferir datos.');
+ await askMC('Montar vs formatear','¿Por qué no debemos formatear siempre al arrancar?',['Porque borraríamos la persistencia que justamente queremos conservar','Porque QEMU no permite formatear','Porque el teclado deja de funcionar','Porque el bootloader desaparece de RAM'],0,'Montar lee estructuras existentes. Formatear crea estructuras nuevas y borra lo anterior.');
+ Swal.fire({...swalBase,icon:'success',title:'¡Clase completa!',text:'Listo: el disco dejó de ser un arreglo en RAM.'});
+}
+
+</script></body></html>

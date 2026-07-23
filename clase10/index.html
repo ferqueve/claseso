@@ -440,8 +440,42 @@ addSlide(`
 <span class="c-lime">void</span> idt_instalar(<span class="c-lime">void</span>) {
     idt_ptr.limite = <span class="c-amber">sizeof</span>(idt) - <span class="c-amber">1</span>;
     idt_ptr.base   = (<span class="c-lime">unsigned int</span>) &idt;
-    idt_cargar((<span class="c-lime">unsigned int</span>) &idt_ptr);  <span class="c-dim">// ejecuta "lgdt"... digo, "lidt" (en .asm)</span>
+    idt_cargar((<span class="c-lime">unsigned int</span>) &idt_ptr);  <span class="c-dim">// ejecuta lidt usando el archivo lidt.asm</span>
 }
+  </div>
+</div>
+`, {module:2, mtype:'practica', clock:'19:45 – 21:00'});
+
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">laboratorio · lidt.asm</div>
+  <h1 class="title">El archivo faltante: <span class="accent">lidt.asm</span></h1>
+  <div class="panel">
+    <p>La función <code>idt_cargar()</code> no se puede escribir en C puro porque necesita ejecutar una instrucción privilegiada de la CPU: <code>lidt</code>. Por eso se declara en C y se implementa en ensamblador.</p>
+  </div>
+  <div class="split" style="margin-top:16px;">
+    <div class="code-block">
+<span class="c-dim">// idt.h</span>
+<span class="c-lime">void</span> idt_cargar(<span class="c-lime">unsigned int</span> idt_ptr);
+    </div>
+    <div class="code-block">
+<span class="c-dim">; lidt.asm</span>
+<span class="c-red">global</span> idt_cargar
+
+idt_cargar:
+    mov eax, [esp + <span class="c-amber">4</span>]   <span class="c-dim">; puntero recibido desde C</span>
+    lidt [eax]          <span class="c-dim">; cargar IDTR</span>
+    ret
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px; border-color:var(--lime);">
+    <div class="term-tag" style="border-color:var(--lime); color:var(--lime);">compilación</div>
+    <p style="margin:0;">Este archivo debe ensamblarse y enlazarse junto con el kernel, igual que los stubs de interrupciones.</p>
+  </div>
+  <div style="margin-top:14px;">
+    <a class="btn-quiz" href="lidt.asm" download style="text-decoration:none; border-color:var(--lime); color:var(--lime);">
+      <i class="fa-solid fa-download"></i> Descargar lidt.asm
+    </a>
   </div>
 </div>
 `, {module:2, mtype:'practica', clock:'19:45 – 21:00'});

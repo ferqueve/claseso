@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>SO · Clase extra 15 — Mouse PS/2</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"><style>
+:root{--bg-0:#070a0f;--bg-1:#0d131b;--bg-2:#121a24;--panel-border:#1f2b38;--green:#39ff88;--amber:#ffb454;--cyan:#5ccfe6;--accent:#00d1b2;--accent-dim:#087968;--red:#ff5c7a;--text:#dbe4ea;--text-dim:#6d7c8c;--mono:'JetBrains Mono',monospace;--display:'Space Grotesk',sans-serif;}
+*{box-sizing:border-box} html,body{height:100%} body{margin:0;background:radial-gradient(ellipse at top left, color-mix(in srgb, var(--accent) 12%, transparent), transparent 45%),radial-gradient(ellipse at bottom right, rgba(57,255,136,.05), transparent 50%),var(--bg-0);color:var(--text);font-family:var(--display);overflow:hidden;height:100vh} ::selection{background:var(--accent);color:#061018}
+.crt-overlay{position:fixed;inset:0;pointer-events:none;z-index:500;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.015) 0px,rgba(255,255,255,.015) 1px,transparent 1px,transparent 3px);mix-blend-mode:overlay}
+.statusbar{position:fixed;top:0;left:0;right:0;height:42px;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(180deg,rgba(13,19,27,.95),rgba(13,19,27,.75));border-bottom:1px solid var(--panel-border);font-family:var(--mono);font-size:12.5px;color:var(--text-dim)} .statusbar .seg{display:flex;align-items:center;gap:8px}.statusbar .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);animation:pulse 1.8s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}.statusbar .cursor{display:inline-block;width:7px;background:var(--green);margin-left:2px;animation:blink 1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
+#module-badge{font-weight:700;padding:2px 10px;border-radius:3px;border:1px solid currentColor}.mod-teoria{color:var(--cyan)}.mod-practica{color:var(--amber)}.progress-rail{position:fixed;top:42px;left:0;right:0;height:3px;background:var(--bg-2);z-index:200}.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));box-shadow:0 0 8px var(--accent);transition:width .5s ease}
+.deck{position:relative;height:100vh;width:100vw;padding-top:45px}.slide{position:absolute;inset:0;top:45px;display:none;padding:38px 64px 74px;overflow-y:auto}.slide.active{display:block}.slide-inner{max-width:1180px;margin:0 auto}.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:10px;margin-bottom:14px}.eyebrow::before{content:'//';color:var(--text-dim)}h1.title{font-size:2.5rem;font-weight:700;margin:0 0 .8rem;line-height:1.08}.mega{font-size:4.2rem;font-weight:700;line-height:.95;letter-spacing:-.04em;margin:0 0 18px}.subtitle{font-size:1.18rem;color:var(--text-dim);max-width:900px}.accent{color:var(--accent)}.accent-amber{color:var(--amber)}.accent-cyan{color:var(--cyan)}.kernel{color:var(--green)}.red{color:var(--red)}
+.panel{background:linear-gradient(180deg,rgba(18,26,36,.84),rgba(13,19,27,.9));border:1px solid var(--panel-border);border-radius:14px;padding:20px;box-shadow:0 0 0 1px rgba(255,255,255,.015),0 18px 40px rgba(0,0,0,.18)}.grid-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}@media(max-width:900px){.grid-cards,.grid-2{grid-template-columns:1fr}.slide{padding:30px 24px 74px}.mega{font-size:3rem}}
+.card-min{background:rgba(7,10,15,.55);border:1px solid var(--panel-border);border-radius:12px;padding:18px;height:100%}.card-min i{font-size:1.6rem;color:var(--accent);margin-bottom:12px}.card-min h4{font-size:1.05rem;font-weight:700;margin:0 0 8px}.card-min p{color:var(--text-dim);margin:0;line-height:1.55}.checklist{list-style:none;padding-left:0;margin:0}.checklist li{padding:8px 0 8px 28px;position:relative;line-height:1.55}.checklist li::before{content:'>';position:absolute;left:0;color:var(--accent);font-family:var(--mono);font-weight:700}.code-block{font-family:var(--mono);font-size:.88rem;white-space:pre-wrap;line-height:1.42;background:#05080c;border:1px solid #263344;border-radius:14px;padding:18px;color:#dbe4ea;box-shadow:inset 0 0 30px rgba(0,0,0,.35);overflow:auto}.term-tag{display:inline-block;font-family:var(--mono);font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:3px 9px;margin-bottom:10px}.cover,.mod-hero{min-height:calc(100vh - 160px);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;max-width:1180px;margin:0 auto}.boot-lines{font-family:var(--mono);font-size:.82rem;color:var(--text-dim);background:rgba(0,0,0,.25);border:1px solid var(--panel-border);border-radius:12px;padding:14px 18px;margin-bottom:22px;min-width:min(760px,100%)}.ok{color:var(--green)}
+.navbtn{position:fixed;bottom:18px;z-index:220;background:rgba(13,19,27,.8);border:1px solid var(--panel-border);color:var(--text);border-radius:10px;width:42px;height:42px}#prevBtn{right:72px}#nextBtn{right:18px}.slide-counter{position:fixed;bottom:22px;left:18px;z-index:220;font-family:var(--mono);color:var(--text-dim)}.slide-dots{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:220}.dotnav{width:7px;height:7px;border-radius:50%;background:#344454}.dotnav.on{background:var(--accent);box-shadow:0 0 8px var(--accent)}.btn-quiz,.btn-sound{font-family:var(--mono);font-weight:700;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:999px;padding:12px 18px}.btn-quiz:hover,.btn-sound:hover{background:rgba(255,255,255,.05)}.btn-sound{position:fixed;bottom:18px;right:126px;z-index:221;padding:10px 14px}
+.flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:.95rem}.node{border:1px solid var(--panel-border);background:rgba(7,10,15,.65);border-radius:12px;padding:12px 14px}.arrow{color:var(--accent);font-weight:700}.vga{font-family:var(--mono);background:#020406;border:1px solid #263344;border-radius:14px;color:#91f7c5;padding:18px;line-height:1.2;min-height:210px}.warn{border-color:rgba(255,92,122,.55);box-shadow:0 0 0 1px rgba(255,92,122,.08)}.swal2-popup{font-family:var(--display)!important;background:#0d131b!important;color:#dbe4ea!important;border:1px solid #1f2b38!important}.swal2-confirm{background:#00d1b2!important;color:#061018!important;font-family:var(--mono)!important;font-weight:700!important}.swal2-html-container{color:#dbe4ea!important}.kbd{font-family:var(--mono);border:1px solid var(--panel-border);border-bottom-width:3px;border-radius:6px;padding:2px 8px;color:var(--accent)}
+</style></head>
+<body><div class="crt-overlay"></div><div class="statusbar"><div class="seg"><span class="dot"></span><span>toy-os://clase_15_mouse</span><span class="cursor">&nbsp;</span></div><div class="seg"><span id="module-badge" class="mod-teoria">MÓDULO 1 · TEORÍA</span><span id="clockLabel"></span></div></div><div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div><main class="deck" id="deck"></main><button class="btn-sound" id="soundBtn" title="Activar sonido"><i class="fa-solid fa-volume-xmark"></i></button><button class="navbtn" id="prevBtn"><i class="fa-solid fa-arrow-left"></i></button><button class="navbtn" id="nextBtn"><i class="fa-solid fa-arrow-right"></i></button><div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div><div class="slide-dots" id="dotsWrap"></div><script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script><script>const slides=[];
+let current=0;const deck=document.getElementById('deck'),dotsWrap=document.getElementById('dotsWrap');
+let soundOn=false,audioCtx=null;
+function initSound(){ if(!audioCtx){ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); } soundOn=true; beep(520,.05); document.getElementById('soundBtn').innerHTML='<i class="fa-solid fa-volume-high"></i>'; }
+function beep(freq=440,dur=.04,type='square'){ if(!soundOn||!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type=type;o.frequency.value=freq;g.gain.value=.025;o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+dur); }
+function addSlide(html,opts={}){slides.push({html,module:opts.module||1,mtype:opts.mtype||'teoria',clock:opts.clock||''})}
+function mount(){slides.forEach((s,i)=>{const div=document.createElement('div');div.className='slide'+(i===0?' active':'');div.id='slide-'+i;div.innerHTML=s.html;deck.appendChild(div);const d=document.createElement('span');d.className='dotnav'+(i===0?' on':'');d.onclick=()=>goTo(i);dotsWrap.appendChild(d)});document.getElementById('counterTotal').textContent=slides.length;render();}
+function render(){document.querySelectorAll('.slide').forEach((el,i)=>el.classList.toggle('active',i===current));document.querySelectorAll('.dotnav').forEach((d,i)=>d.classList.toggle('on',i===current));document.getElementById('counterNow').textContent=current+1;document.getElementById('progressFill').style.width=((current+1)/slides.length*100)+'%';const s=slides[current],badge=document.getElementById('module-badge');badge.textContent='MÓDULO '+s.module+' · '+(s.mtype==='teoria'?'TEORÍA':'PRÁCTICA');badge.className=s.mtype==='teoria'?'mod-teoria':'mod-practica';document.getElementById('clockLabel').textContent=s.clock}
+function goTo(i){if(i<0||i>=slides.length)return;current=i;beep(330+(i%5)*40,.035);render()}
+document.getElementById('nextBtn').onclick=()=>goTo(current+1);document.getElementById('prevBtn').onclick=()=>goTo(current-1);document.getElementById('soundBtn').onclick=initSound;
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='PageDown')goTo(current+1);if(e.key==='ArrowLeft'||e.key==='PageUp')goTo(current-1);if(e.key.toLowerCase()==='s')initSound();});
+function okAlert(title,text){beep(880,.08,'sine');Swal.fire({icon:'success',title,html:text,confirmButtonText:'Continuar'});}function warnAlert(title,text){beep(180,.12,'sawtooth');Swal.fire({icon:'warning',title,html:text,confirmButtonText:'Entendido'});}function quiz(q,ok,why){Swal.fire({title:'Checkpoint',html:q,showDenyButton:true,showCancelButton:true,confirmButtonText:'A',denyButtonText:'B',cancelButtonText:'C'}).then(r=>{const ans=r.isConfirmed?'A':r.isDenied?'B':r.isDismissed?'C':''; if(ans===ok) okAlert('Correcto',why); else warnAlert('Revisemos',why);});}
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn"><div class="boot-lines"><div>[ <span class="ok">OK</span> ] ArSaMoOS detecta teclado ........ IRQ1</div><div>[ <span class="ok">OK</span> ] Próximo dispositivo ............. IRQ12</div><div>[ <span class="ok">OK</span> ] Mouse PS/2 ...................... eventos de 3 bytes</div></div><div class="eyebrow">clase extra 15</div><h1 class="mega">Mouse PS/2<br><span class="kernel">como productor de eventos</span></h1><p class="subtitle">No vamos a “dibujar ventanas”. Vamos a recibir interrupciones del mouse y convertirlas en eventos que otros procesos puedan consumir.</p><p><span class="kbd">←</span> <span class="kbd">→</span> navegar · <span class="kbd">S</span> activar sonido</p></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:30'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">encaje con ArSaMoOS</div><h1 class="title">El mouse no entra como “juguete gráfico”</h1><div class="grid-cards"><div class="card-min"><i class="fa-solid fa-keyboard"></i><h4>Teclado</h4><p>Ya existe como entrada: lee scancodes desde <code>0x60</code>.</p></div><div class="card-min"><i class="fa-solid fa-computer-mouse"></i><h4>Mouse</h4><p>También habla por <code>0x60</code>, pero avisa mediante <code>IRQ12</code>.</p></div><div class="card-min"><i class="fa-solid fa-list-check"></i><h4>Eventos</h4><p>La aplicación no debería leer puertos; debería recibir eventos.</p></div></div><div class="panel mt-3"><div class="term-tag">idea docente</div><p class="mb-0">El mouse será la excusa para mostrar productores, consumidores, procesos y semáforos con un problema visible.</p></div></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:30'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">flujo</div><h1 class="title">Del movimiento físico al kernel</h1><div class="panel"><div class="flow"><span class="node">Mouse</span><span class="arrow">→</span><span class="node">Controlador PS/2 8042</span><span class="arrow">→</span><span class="node">IRQ12</span><span class="arrow">→</span><span class="node">PIC esclavo</span><span class="arrow">→</span><span class="node">IDT[44]</span><span class="arrow">→</span><span class="node">mouse_handler()</span></div></div><div class="code-block mt-3">IRQ12 remapeada = 32 + 12 = 44
+
+idt_set_gate(44, (unsigned int)irq12_stub);
+pic_desenmascarar_irq(12);</div><button class="btn-quiz mt-3" onclick="quiz('Si el PIC fue remapeado a 32, ¿qué entrada de la IDT corresponde a IRQ12?<br><br>A) 12<br>B) 32<br>C) 44','C','Después del remapeo: interrupción = 32 + IRQ. Entonces 32 + 12 = 44.')"><i class="fa-solid fa-circle-question"></i> Pregunta rápida</button></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:30'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">antes de tocar mouse.c</div><h1 class="title">Primer ajuste: el build debe incluir IDT y PIC</h1><div class="panel warn"><p>En el proyecto de los alumnos existen <code>idt.c</code> y <code>pic.c</code>, pero el Makefile actual no los compila ni los enlaza. Para un driver por interrupciones, esa capa debe estar integrada.</p></div><div class="code-block mt-3">idt.o: kernel/idt.c kernel/idt.h
+	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -nostdlib -c kernel/idt.c -o idt.o
+
+pic.o: kernel/pic.c kernel/pic.h
+	gcc -m32 -ffreestanding -fno-pie -fno-pic -fno-stack-protector -nostdlib -c kernel/pic.c -o pic.o
+
+kernel.bin: ... idt.o pic.o ...</div></div>`,{module:1,mtype:'practica',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">puertos</div><h1 class="title">El controlador PS/2 usa dos puertos</h1><div class="grid-2"><div class="card-min"><i class="fa-solid fa-inbox"></i><h4>0x60 · datos</h4><p>Por aquí leemos bytes del teclado y del mouse. También enviamos comandos al mouse.</p></div><div class="card-min"><i class="fa-solid fa-gears"></i><h4>0x64 · estado/comando</h4><p>Permite saber si hay datos, si se puede escribir y enviar comandos al controlador.</p></div></div><div class="code-block mt-3">#define PS2_DATOS   0x60
+#define PS2_ESTADO  0x64
+#define PS2_COMANDO 0x64
+
+#define PS2_OBF 1  /* output buffer full */
+#define PS2_IBF 2  /* input buffer full  */</div></div>`,{module:2,mtype:'teoria',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">mouse.h</div><h1 class="title">Estado mínimo del mouse</h1><div class="code-block">#ifndef MOUSE_H
+#define MOUSE_H
+
+typedef struct
+{
+    int x;
+    int y;
+    int dx;
+    int dy;
+    unsigned char izquierdo;
+    unsigned char derecho;
+    unsigned char medio;
+} mouse_estado_t;
+
+void mouse_inicializar(void);
+void mouse_handler_c(void);
+mouse_estado_t mouse_obtener_estado(void);
+
+#endif</div><div class="panel mt-3"><p class="mb-0">Todavía no hay cursor. Primero queremos ver que el kernel recibe movimiento y botones.</p></div></div>`,{module:2,mtype:'practica',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">paquete PS/2</div><h1 class="title">El mouse no envía coordenadas: envía desplazamientos</h1><div class="grid-2"><div class="panel"><div class="term-tag">byte 1</div><div class="code-block">bit 0: botón izquierdo
+bit 1: botón derecho
+bit 2: botón medio
+bit 3: siempre 1
+bit 4: signo X
+bit 5: signo Y
+bit 6: overflow X
+bit 7: overflow Y</div></div><div class="panel"><div class="term-tag">bytes 2 y 3</div><div class="code-block">byte 2: desplazamiento X
+byte 3: desplazamiento Y
+
+x += dx;
+y -= dy;  // en VGA la Y crece hacia abajo</div></div></div></div>`,{module:2,mtype:'teoria',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">mouse.c</div><h1 class="title">Recibir tres bytes y armar un evento</h1><div class="code-block" style="font-size:.78rem">#include "mouse.h"
+#include "pic.h"
+
+static mouse_estado_t estado;
+static unsigned char paquete[3];
+static int indice = 0;
+
+static unsigned char inb(unsigned short p) { unsigned char v; __asm__ volatile("inb %1,%0":"=a"(v):"Nd"(p)); return v; }
+static void outb(unsigned short p, unsigned char v) { __asm__ volatile("outb %0,%1"::"a"(v),"Nd"(p)); }
+
+static int extender_signo(unsigned char valor, unsigned char signo)
+{
+    if (signo) return (int)valor - 256;
+    return (int)valor;
+}
+
+void mouse_handler_c(void)
+{
+    unsigned char b = inb(0x60);
+
+    paquete[indice] = b;
+    indice++;
+
+    if (indice < 3) return;
+    indice = 0;
+
+    estado.izquierdo = paquete[0] & 1;
+    estado.derecho   = (paquete[0] >> 1) & 1;
+    estado.medio     = (paquete[0] >> 2) & 1;
+    estado.dx = extender_signo(paquete[1], paquete[0] & 0x10);
+    estado.dy = extender_signo(paquete[2], paquete[0] & 0x20);
+
+    estado.x += estado.dx;
+    estado.y -= estado.dy;
+}</div></div>`,{module:2,mtype:'practica',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">inicialización</div><h1 class="title">Encender el envío de datos del mouse</h1><div class="code-block" style="font-size:.8rem">static void ps2_esperar_lectura(void)
+{
+    while ((inb(0x64) & 1) == 0) { }
+}
+
+static void ps2_esperar_escritura(void)
+{
+    while ((inb(0x64) & 2) != 0) { }
+}
+
+static void mouse_write(unsigned char comando)
+{
+    ps2_esperar_escritura();
+    outb(0x64, 0xD4);      /* siguiente byte va al mouse */
+    ps2_esperar_escritura();
+    outb(0x60, comando);
+}
+
+void mouse_inicializar(void)
+{
+    estado.x = 40;
+    estado.y = 12;
+
+    mouse_write(0xF6);     /* valores por defecto */
+    ps2_esperar_lectura();
+    inb(0x60);             /* ACK */
+
+    mouse_write(0xF4);     /* empezar a enviar paquetes */
+    ps2_esperar_lectura();
+    inb(0x60);             /* ACK */
+
+    pic_desenmascarar_irq(12);
+}</div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:10'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">regla de oro</div><h1 class="title">El handler no debe hacer trabajo pesado</h1><div class="grid-2"><div class="panel warn"><h4 class="red">MAL</h4><ul class="checklist"><li>Dibujar pantalla completa.</li><li>Ejecutar <code>sem_wait()</code>.</li><li>Llamar a funciones lentas del sistema de archivos.</li><li>Quedarse esperando algo.</li></ul></div><div class="panel"><h4 class="accent">BIEN</h4><ul class="checklist"><li>Leer el byte del puerto.</li><li>Completar el paquete.</li><li>Guardar estado o encolar evento.</li><li>Enviar EOI al PIC si corresponde.</li></ul></div></div></div>`,{module:3,mtype:'teoria',clock:'21:05 – 22:10'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center;padding-top:5vh"><div class="eyebrow" style="justify-content:center">checkpoint</div><h1 class="title"><i class="fa-solid fa-computer-mouse accent"></i> ¿Qué logramos hoy?</h1><p class="subtitle mx-auto">El kernel ya puede recibir movimiento y botones. Todavía no resolvimos procesos ni semáforos: dejamos preparado el productor de eventos.</p><button class="btn-quiz" onclick="quiz('¿Por qué NO conviene llamar sem_wait() dentro de una interrupción?<br><br>A) Porque una interrupción no es un proceso normal<br>B) Porque sem_wait() usa muchos colores<br>C) Porque el mouse no usa memoria','A','El handler corre en contexto de interrupción. Si se bloquea o hace yield, rompe el modelo del scheduler educativo.')"><i class="fa-solid fa-play"></i> Repasar</button></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:10'});
+addSlide(`
+<div class="cover animate__animated animate__fadeIn"><div class="eyebrow">cierre</div><h1 class="mega">Un nuevo dispositivo<br><span class="kernel">ya genera eventos</span></h1><div class="panel mt-3" style="max-width:850px"><ul class="checklist"><li>El mouse llega por IRQ12, no por IRQ1.</li><li>La entrada de IDT es 44 si el PIC empieza en 32.</li><li>El paquete son 3 bytes: botones, dx y dy.</li><li>La próxima clase convierte esos eventos en comportamiento visible de procesos.</li></ul></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:10'});
+
+mount();</script></body></html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>SO · Clase extra 16 — Mouse y procesos</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"><style>
+:root{--bg-0:#070a0f;--bg-1:#0d131b;--bg-2:#121a24;--panel-border:#1f2b38;--green:#39ff88;--amber:#ffb454;--cyan:#5ccfe6;--accent:#00d1b2;--accent-dim:#087968;--red:#ff5c7a;--text:#dbe4ea;--text-dim:#6d7c8c;--mono:'JetBrains Mono',monospace;--display:'Space Grotesk',sans-serif;}
+*{box-sizing:border-box} html,body{height:100%} body{margin:0;background:radial-gradient(ellipse at top left, color-mix(in srgb, var(--accent) 12%, transparent), transparent 45%),radial-gradient(ellipse at bottom right, rgba(57,255,136,.05), transparent 50%),var(--bg-0);color:var(--text);font-family:var(--display);overflow:hidden;height:100vh} ::selection{background:var(--accent);color:#061018}
+.crt-overlay{position:fixed;inset:0;pointer-events:none;z-index:500;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.015) 0px,rgba(255,255,255,.015) 1px,transparent 1px,transparent 3px);mix-blend-mode:overlay}
+.statusbar{position:fixed;top:0;left:0;right:0;height:42px;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(180deg,rgba(13,19,27,.95),rgba(13,19,27,.75));border-bottom:1px solid var(--panel-border);font-family:var(--mono);font-size:12.5px;color:var(--text-dim)} .statusbar .seg{display:flex;align-items:center;gap:8px}.statusbar .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);animation:pulse 1.8s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}.statusbar .cursor{display:inline-block;width:7px;background:var(--green);margin-left:2px;animation:blink 1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
+#module-badge{font-weight:700;padding:2px 10px;border-radius:3px;border:1px solid currentColor}.mod-teoria{color:var(--cyan)}.mod-practica{color:var(--amber)}.progress-rail{position:fixed;top:42px;left:0;right:0;height:3px;background:var(--bg-2);z-index:200}.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));box-shadow:0 0 8px var(--accent);transition:width .5s ease}
+.deck{position:relative;height:100vh;width:100vw;padding-top:45px}.slide{position:absolute;inset:0;top:45px;display:none;padding:38px 64px 74px;overflow-y:auto}.slide.active{display:block}.slide-inner{max-width:1180px;margin:0 auto}.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:10px;margin-bottom:14px}.eyebrow::before{content:'//';color:var(--text-dim)}h1.title{font-size:2.5rem;font-weight:700;margin:0 0 .8rem;line-height:1.08}.mega{font-size:4.2rem;font-weight:700;line-height:.95;letter-spacing:-.04em;margin:0 0 18px}.subtitle{font-size:1.18rem;color:var(--text-dim);max-width:900px}.accent{color:var(--accent)}.accent-amber{color:var(--amber)}.accent-cyan{color:var(--cyan)}.kernel{color:var(--green)}.red{color:var(--red)}
+.panel{background:linear-gradient(180deg,rgba(18,26,36,.84),rgba(13,19,27,.9));border:1px solid var(--panel-border);border-radius:14px;padding:20px;box-shadow:0 0 0 1px rgba(255,255,255,.015),0 18px 40px rgba(0,0,0,.18)}.grid-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}@media(max-width:900px){.grid-cards,.grid-2{grid-template-columns:1fr}.slide{padding:30px 24px 74px}.mega{font-size:3rem}}
+.card-min{background:rgba(7,10,15,.55);border:1px solid var(--panel-border);border-radius:12px;padding:18px;height:100%}.card-min i{font-size:1.6rem;color:var(--accent);margin-bottom:12px}.card-min h4{font-size:1.05rem;font-weight:700;margin:0 0 8px}.card-min p{color:var(--text-dim);margin:0;line-height:1.55}.checklist{list-style:none;padding-left:0;margin:0}.checklist li{padding:8px 0 8px 28px;position:relative;line-height:1.55}.checklist li::before{content:'>';position:absolute;left:0;color:var(--accent);font-family:var(--mono);font-weight:700}.code-block{font-family:var(--mono);font-size:.88rem;white-space:pre-wrap;line-height:1.42;background:#05080c;border:1px solid #263344;border-radius:14px;padding:18px;color:#dbe4ea;box-shadow:inset 0 0 30px rgba(0,0,0,.35);overflow:auto}.term-tag{display:inline-block;font-family:var(--mono);font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:3px 9px;margin-bottom:10px}.cover,.mod-hero{min-height:calc(100vh - 160px);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;max-width:1180px;margin:0 auto}.boot-lines{font-family:var(--mono);font-size:.82rem;color:var(--text-dim);background:rgba(0,0,0,.25);border:1px solid var(--panel-border);border-radius:12px;padding:14px 18px;margin-bottom:22px;min-width:min(760px,100%)}.ok{color:var(--green)}
+.navbtn{position:fixed;bottom:18px;z-index:220;background:rgba(13,19,27,.8);border:1px solid var(--panel-border);color:var(--text);border-radius:10px;width:42px;height:42px}#prevBtn{right:72px}#nextBtn{right:18px}.slide-counter{position:fixed;bottom:22px;left:18px;z-index:220;font-family:var(--mono);color:var(--text-dim)}.slide-dots{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:220}.dotnav{width:7px;height:7px;border-radius:50%;background:#344454}.dotnav.on{background:var(--accent);box-shadow:0 0 8px var(--accent)}.btn-quiz,.btn-sound{font-family:var(--mono);font-weight:700;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:999px;padding:12px 18px}.btn-quiz:hover,.btn-sound:hover{background:rgba(255,255,255,.05)}.btn-sound{position:fixed;bottom:18px;right:126px;z-index:221;padding:10px 14px}
+.flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:.95rem}.node{border:1px solid var(--panel-border);background:rgba(7,10,15,.65);border-radius:12px;padding:12px 14px}.arrow{color:var(--accent);font-weight:700}.vga{font-family:var(--mono);background:#020406;border:1px solid #263344;border-radius:14px;color:#91f7c5;padding:18px;line-height:1.2;min-height:210px}.warn{border-color:rgba(255,92,122,.55);box-shadow:0 0 0 1px rgba(255,92,122,.08)}.swal2-popup{font-family:var(--display)!important;background:#0d131b!important;color:#dbe4ea!important;border:1px solid #1f2b38!important}.swal2-confirm{background:#00d1b2!important;color:#061018!important;font-family:var(--mono)!important;font-weight:700!important}.swal2-html-container{color:#dbe4ea!important}.kbd{font-family:var(--mono);border:1px solid var(--panel-border);border-bottom-width:3px;border-radius:6px;padding:2px 8px;color:var(--accent)}
+</style></head>
+<body><div class="crt-overlay"></div><div class="statusbar"><div class="seg"><span class="dot"></span><span>toy-os://clase_16_mouse_procesos</span><span class="cursor">&nbsp;</span></div><div class="seg"><span id="module-badge" class="mod-teoria">MÓDULO 1 · TEORÍA</span><span id="clockLabel"></span></div></div><div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div><main class="deck" id="deck"></main><button class="btn-sound" id="soundBtn" title="Activar sonido"><i class="fa-solid fa-volume-xmark"></i></button><button class="navbtn" id="prevBtn"><i class="fa-solid fa-arrow-left"></i></button><button class="navbtn" id="nextBtn"><i class="fa-solid fa-arrow-right"></i></button><div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div><div class="slide-dots" id="dotsWrap"></div><script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script><script>const slides=[];
+let current=0;const deck=document.getElementById('deck'),dotsWrap=document.getElementById('dotsWrap');
+let soundOn=false,audioCtx=null;
+function initSound(){ if(!audioCtx){ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); } soundOn=true; beep(520,.05); document.getElementById('soundBtn').innerHTML='<i class="fa-solid fa-volume-high"></i>'; }
+function beep(freq=440,dur=.04,type='square'){ if(!soundOn||!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type=type;o.frequency.value=freq;g.gain.value=.025;o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+dur); }
+function addSlide(html,opts={}){slides.push({html,module:opts.module||1,mtype:opts.mtype||'teoria',clock:opts.clock||''})}
+function mount(){slides.forEach((s,i)=>{const div=document.createElement('div');div.className='slide'+(i===0?' active':'');div.id='slide-'+i;div.innerHTML=s.html;deck.appendChild(div);const d=document.createElement('span');d.className='dotnav'+(i===0?' on':'');d.onclick=()=>goTo(i);dotsWrap.appendChild(d)});document.getElementById('counterTotal').textContent=slides.length;render();}
+function render(){document.querySelectorAll('.slide').forEach((el,i)=>el.classList.toggle('active',i===current));document.querySelectorAll('.dotnav').forEach((d,i)=>d.classList.toggle('on',i===current));document.getElementById('counterNow').textContent=current+1;document.getElementById('progressFill').style.width=((current+1)/slides.length*100)+'%';const s=slides[current],badge=document.getElementById('module-badge');badge.textContent='MÓDULO '+s.module+' · '+(s.mtype==='teoria'?'TEORÍA':'PRÁCTICA');badge.className=s.mtype==='teoria'?'mod-teoria':'mod-practica';document.getElementById('clockLabel').textContent=s.clock}
+function goTo(i){if(i<0||i>=slides.length)return;current=i;beep(330+(i%5)*40,.035);render()}
+document.getElementById('nextBtn').onclick=()=>goTo(current+1);document.getElementById('prevBtn').onclick=()=>goTo(current-1);document.getElementById('soundBtn').onclick=initSound;
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='PageDown')goTo(current+1);if(e.key==='ArrowLeft'||e.key==='PageUp')goTo(current-1);if(e.key.toLowerCase()==='s')initSound();});
+function okAlert(title,text){beep(880,.08,'sine');Swal.fire({icon:'success',title,html:text,confirmButtonText:'Continuar'});}function warnAlert(title,text){beep(180,.12,'sawtooth');Swal.fire({icon:'warning',title,html:text,confirmButtonText:'Entendido'});}function quiz(q,ok,why){Swal.fire({title:'Checkpoint',html:q,showDenyButton:true,showCancelButton:true,confirmButtonText:'A',denyButtonText:'B',cancelButtonText:'C'}).then(r=>{const ans=r.isConfirmed?'A':r.isDenied?'B':r.isDismissed?'C':''; if(ans===ok) okAlert('Correcto',why); else warnAlert('Revisemos',why);});}
+
+addSlide(`
+<div class="cover animate__animated animate__fadeIn"><div class="boot-lines"><div>[ <span class="ok">OK</span> ] Mouse produce eventos .......... movimiento/click</div><div>[ <span class="ok">OK</span> ] Scheduler cooperativo .......... procesos</div><div>[ <span class="ok">OK</span> ] Objetivo ....................... cursor + ahorcado + reloj</div></div><div class="eyebrow">clase extra 16</div><h1 class="mega">Mouse, procesos<br><span class="kernel">y cola de eventos</span></h1><p class="subtitle">Usamos el mouse para que los procesos de ArSaMoOS compartan una misma realidad: teclado, pantalla y eventos.</p></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:30'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">modelo mental</div><h1 class="title">Productor y consumidores</h1><div class="panel"><div class="flow"><span class="node">IRQ12</span><span class="arrow">→</span><span class="node">mouse_handler()</span><span class="arrow">→</span><span class="node">cola_eventos</span><span class="arrow">→</span><span class="node">proceso_cursor</span><span class="arrow">+</span><span class="node">proceso_ahorcado</span></div></div><p class="subtitle mt-3">El handler produce eventos. Los procesos los consumen cuando el scheduler les da CPU.</p></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:30'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">evento</div><h1 class="title">No compartimos “el mouse”: compartimos eventos</h1><div class="code-block">#ifndef EVENTO_H
+#define EVENTO_H
+
+#define EVENTO_MOUSE 1
+#define EVENTO_TECLA 2
+
+typedef struct
+{
+    int tipo;
+    int x;
+    int y;
+    int dx;
+    int dy;
+    unsigned char boton_izquierdo;
+    char tecla;
+} evento_t;
+
+int evento_encolar(evento_t e);
+int evento_desencolar(evento_t *e);
+
+#endif</div></div>`,{module:1,mtype:'practica',clock:'18:15 – 19:30'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">cola circular</div><h1 class="title">Una cola pequeña alcanza para enseñar</h1><div class="code-block" style="font-size:.8rem">#include "evento.h"
+
+#define MAX_EVENTOS 32
+
+static evento_t cola[MAX_EVENTOS];
+static int cabeza = 0;
+static int cola_fin = 0;
+static int cantidad = 0;
+
+int evento_encolar(evento_t e)
+{
+    if (cantidad >= MAX_EVENTOS) return -1;
+    cola[cola_fin] = e;
+    cola_fin = (cola_fin + 1) % MAX_EVENTOS;
+    cantidad++;
+    return 0;
+}
+
+int evento_desencolar(evento_t *e)
+{
+    if (cantidad == 0) return 0;
+    *e = cola[cabeza];
+    cabeza = (cabeza + 1) % MAX_EVENTOS;
+    cantidad--;
+    return 1;
+}</div><div class="panel mt-3"><p class="mb-0">Primero sin semáforo: queremos que vean por qué puede fallar si dos contextos tocan la cola.</p></div></div>`,{module:1,mtype:'practica',clock:'18:15 – 19:30'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">proceso cursor</div><h1 class="title">Un proceso consume eventos y dibuja el cursor</h1><div class="code-block" style="font-size:.8rem">static int cursor_x = 40;
+static int cursor_y = 12;
+
+static void proceso_cursor(void)
+{
+    evento_t e;
+
+    while (1)
+    {
+        if (evento_desencolar(&e))
+        {
+            if (e.tipo == EVENTO_MOUSE)
+            {
+                cursor_x = e.x;
+                cursor_y = e.y;
+                /* por ahora: dibujar X en VGA texto */
+            }
+        }
+
+        proceso_yield();
+    }
+}</div></div>`,{module:2,mtype:'practica',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">pantalla.c</div><h1 class="title">Hace falta escribir en coordenadas</h1><div class="panel"><p>El módulo <code>pantalla.c</code> ya sabe escribir texto en la posición actual. Para cursor conviene agregar una función directa.</p></div><div class="code-block mt-3">void pantalla_put_at(int x, int y, char c, unsigned char color)
+{
+    volatile char *video = (volatile char *)0xB8000;
+    int pos;
+
+    if (x < 0 || x >= 80) return;
+    if (y < 0 || y >= 25) return;
+
+    pos = y * 80 + x;
+    video[pos * 2] = c;
+    video[pos * 2 + 1] = color;
+}</div></div>`,{module:2,mtype:'practica',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">demostración visual</div><h1 class="title">Tres procesos “vivos”</h1><div class="grid-cards"><div class="card-min"><i class="fa-solid fa-terminal"></i><h4>Proceso menú/shell</h4><p>Recibe comandos o lanza el ahorcado.</p></div><div class="card-min"><i class="fa-solid fa-clock"></i><h4>Proceso reloj</h4><p>Escribe una marca en pantalla periódicamente.</p></div><div class="card-min"><i class="fa-solid fa-arrow-pointer"></i><h4>Proceso cursor</h4><p>Mueve una X según los eventos del mouse.</p></div></div><div class="vga mt-3">ArSaMoOS
+
+[Reloj] tick 012
+
+Ahorcado: _ _ _ _ _
+Letras: A E S
+
+                                      X</div></div>`,{module:2,mtype:'teoria',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">integración</div><h1 class="title">Crear procesos desde la demo</h1><div class="code-block">static void iniciar_demo_mouse_procesos(void)
+{
+    limpiar_pantalla();
+    escribir_texto("Demo: mouse + procesos\n\n");
+
+    crear_proceso(proceso_reloj);
+    crear_proceso(proceso_cursor);
+    crear_proceso(proceso_ahorcado_mouse);
+
+    procesos[0].estado = CORRIENDO;
+    proceso_actual = 0;
+
+    cambiar_contexto(&contexto_kmain, &procesos[0].ctx);
+}</div><div class="panel mt-3"><p class="mb-0">No hace falta resolver todo en una clase. Primero puede existir un <code>proceso_cursor</code> y un <code>proceso_reloj</code>. Luego se adapta ahorcado.</p></div></div>`,{module:2,mtype:'practica',clock:'19:40 – 21:00'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">ahorcado</div><h1 class="title">Aplicación real: seleccionar letras con clic</h1><div class="grid-2"><div class="panel"><div class="term-tag">antes</div><p>El juego espera una tecla con <code>leer_tecla()</code>.</p><div class="code-block">letra = leer_tecla();</div></div><div class="panel"><div class="term-tag">después</div><p>El juego puede aceptar teclado o evento de mouse.</p><div class="code-block">if (evento.tipo == EVENTO_TECLA)
+    letra = evento.tecla;
+
+if (evento.tipo == EVENTO_MOUSE && evento.boton_izquierdo)
+    letra = letra_en_posicion(evento.x, evento.y);</div></div></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:10'});
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">peligro</div><h1 class="title">Ya tenemos un problema de concurrencia</h1><div class="panel warn"><p>El handler de mouse puede encolar un evento mientras un proceso está desencolando. Si ambas operaciones modifican <code>cantidad</code>, <code>cabeza</code> o <code>cola_fin</code> al mismo tiempo, la cola puede quedar corrupta.</p></div><div class="code-block mt-3">Proceso cursor lee cantidad = 1
+IRQ12 ocurre justo en el medio
+mouse_handler() incrementa cantidad
+Proceso cursor continúa con un valor viejo
+
+Resultado: evento perdido o cola inconsistente</div><button class="btn-quiz mt-3" onclick="quiz('¿Qué recurso compartido apareció en esta clase?<br><br>A) La cola de eventos<br>B) El logo ASCII<br>C) El Makefile','A','La cola de eventos puede ser tocada desde el handler y desde procesos. Eso abre la puerta a sincronización.')"><i class="fa-solid fa-bolt"></i> Checkpoint</button></div>`,{module:3,mtype:'teoria',clock:'21:05 – 22:10'});
+addSlide(`
+<div class="cover animate__animated animate__fadeIn"><div class="eyebrow">cierre</div><h1 class="mega">El mouse obliga<br><span class="kernel">a pensar en procesos</span></h1><div class="panel mt-3" style="max-width:900px"><ul class="checklist"><li>El handler produce eventos.</li><li>Los procesos consumen eventos cuando el scheduler los ejecuta.</li><li>El cursor ya puede ser un proceso separado.</li><li>La próxima clase protege pantalla y cola con semáforos.</li></ul></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:10'});
+
+mount();</script></body></html>

@@ -23,13 +23,15 @@ addSlide(`
 
 addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">problema real</div><h1 class="title">Nuestro disco RAM <span class="accent">funciona</span>, pero no recuerda</h1><div class="panel"><ul class="checklist"><li>Hoy el sistema de archivos vive dentro de <code>disco_ram[NUM_BLOQUES][TAM_BLOQUE]</code>.</li><li>Sirve para aprender inodos, bitmap y bloques, pero al reiniciar la VM desaparece todo.</li><li>La meta: conservar la misma API del sistema de archivos y cambiar solamente el backend de bloques.</li></ul></div></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:35'});
 addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">arquitectura</div><h1 class="title">Separar <span class="accent">sistema de archivos</span> de <span class="accent-amber">driver</span></h1><div class="grid-cards"><div class="card-min"><i class="fa-solid fa-file-lines"></i><h4>FS</h4><p>crear, escribir, leer, listar. No debería saber si abajo hay RAM o disco.</p></div><div class="card-min"><i class="fa-solid fa-cubes"></i><h4>Bloques</h4><p><code>bloque_leer(n, buf)</code> y <code>bloque_escribir(n, buf)</code>.</p></div><div class="card-min"><i class="fa-solid fa-hard-drive"></i><h4>Driver</h4><p>Traduce bloque lógico a sector físico mediante puertos ATA.</p></div></div><div class="panel" style="margin-top:16px"><div class="term-tag">idea clave</div><p style="margin:0">El FS queda casi igual. La persistencia aparece cuando esos bloques dejan de estar en RAM y pasan a un archivo de disco conectado a QEMU.</p></div></div>`,{module:1,mtype:'teoria',clock:'18:15 – 19:35'});
-addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">QEMU</div><h1 class="title">Agregar un disco de datos <span class="accent">real</span></h1><div class="panel"><p>Para no mezclar el disco de arranque con los datos del sistema de archivos, usamos un segundo disco crudo. QEMU lo expone como un dispositivo IDE adicional.</p></div><div class="code-block" style="margin-top:16px;"># crear un disco de 16 MB para datos
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">QEMU</div><h1 class="title">Agregar un disco de datos <span class="accent">real</span></h1><div class="panel"><p>Para no mezclar el disco de arranque con los datos del sistema de archivos, usamos un segundo disco crudo. QEMU lo expone como un dispositivo IDE adicional.</p></div><div class="panel" style="margin-top:16px;border-color:var(--red)"><div class="term-tag" style="border-color:var(--red);color:var(--red)">ojo si arrancás con floppy</div><p style="margin:0">Nuestro proyecto arranca con <code>-fda os-image.bin</code> (Clase 3), no con un <code>os.img</code> IDE. Si mantenés el floppy y agregás <code>data.img</code>, ese disco de datos pasa a ser el <b>ÚNICO</b> disco IDE — y por default ocupa la posición de <b>master</b>, no de slave. El comando y el código de esta clase están ajustados para ese caso.</p></div><div class="code-block" style="margin-top:16px;"># crear un disco de 16 MB para datos
 qemu-img create -f raw data.img 16M
 
-# arrancar con el disco del SO + disco de datos
+# arrancamos con nuestro floppy de siempre (Clase 3) + el disco de datos.
+# index=0 porque es el ÚNICO disco IDE — eso lo pone en la posición
+# "master" del bus IDE primario, no en "slave".
 qemu-system-i386 \
-  -drive file=os.img,format=raw,index=0,media=disk \
-  -drive file=data.img,format=raw,index=1,media=disk</div><div class="panel" style="margin-top:16px;border-color:var(--amber)"><div class="term-tag" style="border-color:var(--amber);color:var(--amber)">persistencia</div><p style="margin:0">Si escribís un archivo, apagás QEMU y volvés a arrancar con el mismo <code>data.img</code>, los sectores siguen ahí.</p></div></div>`,{module:1,mtype:'practica',clock:'18:15 – 19:35'});
+  -fda os-image.bin \
+  -drive file=data.img,format=raw,index=0,media=disk</div><div class="panel" style="margin-top:16px;border-color:var(--amber)"><div class="term-tag" style="border-color:var(--amber);color:var(--amber)">persistencia</div><p style="margin:0">Si escribís un archivo, apagás QEMU y volvés a arrancar con el mismo <code>data.img</code>, los sectores siguen ahí.</p></div></div>`,{module:1,mtype:'practica',clock:'18:15 – 19:35'});
 addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">ATA PIO · alcance didáctico</div><h1 class="title">La versión simple: <span class="accent">PIO + polling</span></h1><div class="panel"><p>No vamos a implementar AHCI, NVMe, DMA ni interrupciones de disco. Para el curso alcanza un driver ATA PIO mínimo: el CPU manda un comando, espera al estado del disco y transfiere 256 palabras de 16 bits por sector.</p></div><div class="grid-cards" style="margin-top:16px"><div class="card-min"><i class="fa-solid fa-plug"></i><h4>Puerto base</h4><p>Bus IDE primario: <code>0x1F0</code> a <code>0x1F7</code>.</p></div><div class="card-min"><i class="fa-solid fa-layer-group"></i><h4>Sector</h4><p>Trabajamos con sectores de 512 bytes, igual que <code>TAM_BLOQUE</code>.</p></div><div class="card-min"><i class="fa-solid fa-hourglass-half"></i><h4>Esperar</h4><p>Miramos <code>BSY</code> y <code>DRQ</code> en el registro de estado.</p></div></div></div>`,{module:2,mtype:'teoria',clock:'19:45 – 21:00'});
 addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">puertos ATA</div><h1 class="title">Mapa mínimo de registros</h1><div class="code-block">#define ATA_DATOS       0x1F0
 #define ATA_SECCOUNT    0x1F2
@@ -43,33 +45,69 @@ addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div clas
 #define ATA_CMD_ESCRIBIR 0x30
 #define ATA_SR_BSY      0x80
 #define ATA_SR_DRQ      0x08</div><div class="panel" style="margin-top:16px"><p style="margin:0">LBA28 permite direccionar sectores por número. Para nuestro disco de juguete sobra ampliamente.</p></div></div>`,{module:2,mtype:'practica',clock:'19:45 – 21:00'});
-addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">código base · sin includes</div><h1 class="title">Esperar a que el disco esté listo</h1><div class="code-block">typedef unsigned char  u8;
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">código base · sin includes</div><h1 class="title">Esperar a que el disco esté listo</h1><div class="panel" style="border-color:var(--red)"><div class="term-tag" style="border-color:var(--red);color:var(--red)">acá vivía el "queda trabado al bootear"</div><p style="margin:0">La versión original de <code>ata_esperar_listo()</code> no tenía forma de salir si el disco nunca respondía (drive mal seleccionado, disco no conectado, etc.) — los dos <code>do...while</code> podían quedar esperando <b>para siempre</b>, colgando todo el kernel. Se agregó un límite de intentos (timeout) y chequeo del bit de error (<code>ERR</code>), para que devuelva un código de error en vez de colgarse.</p></div><div class="code-block" style="margin-top:16px">typedef unsigned char  u8;
 typedef unsigned short u16;
 typedef unsigned int   u32;
 
-static void ata_esperar_listo(void) {
-    u8 estado;
-    do { estado = inb(ATA_CMD_STATUS); }
-    while (estado & ATA_SR_BSY);
+#define ATA_SR_ERR       0x01   // bit de error del registro de estado
+#define ATA_MAX_INTENTOS 100000 // limite de sondeos antes de rendirse
 
-    do { estado = inb(ATA_CMD_STATUS); }
-    while (!(estado & ATA_SR_DRQ));
+// Devuelve 0 si el disco esta listo para transferir datos.
+// Devuelve -1 si hubo timeout o el disco reporto un error — el llamador
+// SIEMPRE tiene que revisar este valor antes de seguir (Modulo 3).
+static int ata_esperar_listo(void) {
+    u8 estado;
+    int intentos;
+
+    // 1. esperar a que el disco deje de estar "ocupado" (BSY)
+    intentos = ATA_MAX_INTENTOS;
+    do {
+        estado = inb(ATA_CMD_STATUS);
+        intentos--;
+    } while ((estado & ATA_SR_BSY) && intentos > 0);
+
+    if (intentos == 0)        return -1;  // nunca dejo de estar BSY
+    if (estado & ATA_SR_ERR)  return -1;  // el disco reporto un error
+
+    // 2. esperar a que el disco tenga datos listos para transferir (DRQ)
+    intentos = ATA_MAX_INTENTOS;
+    do {
+        estado = inb(ATA_CMD_STATUS);
+        intentos--;
+    } while (!(estado & ATA_SR_DRQ) && intentos > 0);
+
+    if (intentos == 0)        return -1;
+    if (estado & ATA_SR_ERR)  return -1;
+
+    return 0;  // listo de verdad, sin errores
 }
 
+// entre seleccionar el drive y mandar el comando, el datasheet de ATA
+// pide esperar ~400ns — se logra leyendo el puerto de estado 4 veces
+// (cada lectura tarda lo suficiente, sin necesitar un timer real)
 static void ata_delay_400ns(void) {
     inb(ATA_CMD_STATUS); inb(ATA_CMD_STATUS);
     inb(ATA_CMD_STATUS); inb(ATA_CMD_STATUS);
 }</div></div>`,{module:2,mtype:'practica',clock:'19:45 – 21:00'});
-addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">lectura de sector</div><h1 class="title">Leer 512 bytes desde <span class="accent">data.img</span></h1><div class="code-block" style="font-size:.82rem">int ata_leer_sector(u32 lba, u8 *buffer) {
-    outb(ATA_DRIVE, 0xF0 | ((lba >> 24) & 0x0F));  // slave: segundo disco
-    ata_delay_400ns();
-    outb(ATA_SECCOUNT, 1);
-    outb(ATA_LBA0, (u8)(lba));
-    outb(ATA_LBA1, (u8)(lba >> 8));
-    outb(ATA_LBA2, (u8)(lba >> 16));
-    outb(ATA_CMD_STATUS, ATA_CMD_LEER);
-    ata_esperar_listo();
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">lectura de sector</div><h1 class="title">Leer 512 bytes desde <span class="accent">data.img</span></h1><div class="panel" style="border-color:var(--amber)"><div class="term-tag" style="border-color:var(--amber);color:var(--amber)">2 correcciones</div><p style="margin:0"><b>1)</b> Como arrancamos por floppy (no por un os.img IDE), <code>data.img</code> es el ÚNICO disco IDE — va como <b>master</b> (<code>0xE0</code>), no como slave (<code>0xF0</code>). <b>2)</b> Ahora se revisa el valor que devuelve <code>ata_esperar_listo()</code> — si hay error, la función corta y avisa, en vez de seguir leyendo datos que nunca llegaron.</p></div><div class="code-block" style="margin-top:16px;font-size:.82rem">// Lee un sector (512 bytes = 256 palabras de 16 bits) del disco de datos.
+// Devuelve 0 si salio bien, -1 si el disco no respondio (Modulo 3 tiene
+// que revisar este valor antes de confiar en el contenido de "buffer").
+int ata_leer_sector(u32 lba, u8 *buffer) {
+    // 0xE0 = master, en modo LBA. Como data.img es el UNICO disco IDE
+    // (arrancamos por floppy), es master — no slave (0xF0).
+    outb(ATA_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
+    ata_delay_400ns();               // dejar que el drive registre la seleccion
+    outb(ATA_SECCOUNT, 1);           // leer 1 sector
+    outb(ATA_LBA0, (u8)(lba));       // LBA bits 0-7
+    outb(ATA_LBA1, (u8)(lba >> 8));  // LBA bits 8-15
+    outb(ATA_LBA2, (u8)(lba >> 16)); // LBA bits 16-23
+    outb(ATA_CMD_STATUS, ATA_CMD_LEER); // comando: leer sectores
 
+    if (ata_esperar_listo() != 0) {
+        return -1;  // el disco no respondio — antes esto se ignoraba
+    }
+
+    // transferir 256 palabras (512 bytes) del puerto de datos
     for (int i = 0; i < 256; i++) {
         u16 palabra = inw(ATA_DATOS);
         buffer[i*2]     = (u8)(palabra & 0xFF);
@@ -77,26 +115,44 @@ addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div clas
     }
     return 0;
 }</div></div>`,{module:2,mtype:'practica',clock:'19:45 – 21:00'});
-addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">escritura de sector</div><h1 class="title">Escribir un bloque persistente</h1><div class="code-block" style="font-size:.82rem">int ata_escribir_sector(u32 lba, const u8 *buffer) {
-    outb(ATA_DRIVE, 0xF0 | ((lba >> 24) & 0x0F));
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">escritura de sector</div><h1 class="title">Escribir un bloque persistente</h1><div class="code-block" style="font-size:.82rem">// Escribe un sector (512 bytes) en el disco de datos. Misma logica que
+// ata_leer_sector: master (no slave), y revisando el error antes de
+// mandar los datos — si el disco no esta listo, no tiene sentido seguir.
+int ata_escribir_sector(u32 lba, const u8 *buffer) {
+    outb(ATA_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));  // master, LBA
     ata_delay_400ns();
     outb(ATA_SECCOUNT, 1);
     outb(ATA_LBA0, (u8)(lba));
     outb(ATA_LBA1, (u8)(lba >> 8));
     outb(ATA_LBA2, (u8)(lba >> 16));
     outb(ATA_CMD_STATUS, ATA_CMD_ESCRIBIR);
-    ata_esperar_listo();
+
+    if (ata_esperar_listo() != 0) {
+        return -1;  // no se llego a escribir nada
+    }
 
     for (int i = 0; i < 256; i++) {
         u16 palabra = buffer[i*2] | ((u16)buffer[i*2 + 1] << 8);
         outw(ATA_DATOS, palabra);
     }
-    outb(ATA_CMD_STATUS, 0xE7); // flush cache
+
+    outb(ATA_CMD_STATUS, 0xE7);  // "flush cache": bajar a disco de verdad
+    if (ata_esperar_listo() != 0) {
+        return -1;  // el flush tampoco respondio
+    }
     return 0;
 }</div><div class="panel" style="margin-top:16px;border-color:var(--red)"><div class="term-tag" style="border-color:var(--red);color:var(--red)">cuidado</div><p style="margin:0">Escribir en el LBA equivocado pisa bytes reales del disco. Por eso usamos <code>data.img</code> aparte, nunca el disco de arranque.</p></div></div>`,{module:2,mtype:'practica',clock:'19:45 – 21:00'});
-addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">adaptador de bloques</div><h1 class="title">Cambiar una sola capa</h1><div class="code-block">#define SECTOR_INICIO_FS  0
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">adaptador de bloques</div><h1 class="title">Cambiar una sola capa</h1><div class="panel"><p style="margin:0">Esta es la idea central del Módulo 3: el sistema de archivos (inodos, bitmap, directorios — Clase 8) no cambia en absoluto. Lo único que cambia es qué hay <b>debajo</b> de <code>bloque_leer</code>/<code>bloque_escribir</code> — antes era <code>disco_ram[]</code>, ahora es el driver ATA del Módulo 2.</p></div><div class="code-block" style="margin-top:16px">#define SECTOR_INICIO_FS  0
 #define TAM_BLOQUE        512
 
+// Adaptador: el resto del sistema de archivos llama SIEMPRE a estas
+// dos funciones, nunca a ata_leer_sector/ata_escribir_sector
+// directamente ni a disco_ram[] — así, el día de mañana, cambiar el
+// backend (RAM, ATA, o algo más) no obliga a tocar fs.c para nada.
+//
+// Devuelven 0 en éxito, -1 si el driver de abajo (ATA) reportó un
+// error — el FS tiene que revisar esto (ver fs_iniciar más abajo),
+// nunca asumir que la lectura/escritura salió bien.
 int bloque_leer(int bloque, unsigned char *destino) {
     return ata_leer_sector(SECTOR_INICIO_FS + bloque, destino);
 }
@@ -104,14 +160,25 @@ int bloque_leer(int bloque, unsigned char *destino) {
 int bloque_escribir(int bloque, const unsigned char *origen) {
     return ata_escribir_sector(SECTOR_INICIO_FS + bloque, origen);
 }</div><div class="panel" style="margin-top:16px"><p style="margin:0">El resto del sistema de archivos debería llamar a <code>bloque_leer</code> y <code>bloque_escribir</code>, no tocar directamente <code>disco_ram</code>.</p></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
-addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">montaje</div><h1 class="title">¿Formatear o montar?</h1><div class="grid-cards"><div class="card-min"><i class="fa-solid fa-magic-wand-sparkles"></i><h4>Formatear</h4><p>Inicializa superbloque, bitmap, tabla de inodos y directorio raíz.</p></div><div class="card-min"><i class="fa-solid fa-box-open"></i><h4>Montar</h4><p>Lee esas estructuras desde disco. No las borra.</p></div><div class="card-min"><i class="fa-solid fa-signature"></i><h4>Magic number</h4><p>Permite saber si el disco ya tiene nuestro FS o si está vacío.</p></div></div><div class="code-block" style="margin-top:16px">#define FS_MAGIC 0x544F5953  // 'TOYS'
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">montaje</div><h1 class="title">¿Formatear o montar?</h1><div class="grid-cards"><div class="card-min"><i class="fa-solid fa-magic-wand-sparkles"></i><h4>Formatear</h4><p>Inicializa superbloque, bitmap, tabla de inodos y directorio raíz.</p></div><div class="card-min"><i class="fa-solid fa-box-open"></i><h4>Montar</h4><p>Lee esas estructuras desde disco. No las borra.</p></div><div class="card-min"><i class="fa-solid fa-signature"></i><h4>Magic number</h4><p>Permite saber si el disco ya tiene nuestro FS o si está vacío.</p></div></div><div class="panel" style="margin-top:16px;border-color:var(--red)"><div class="term-tag" style="border-color:var(--red);color:var(--red)">acá es donde el cuelgue se veía "al arrancar"</div><p style="margin:0"><code>fs_iniciar()</code> es de las primeras cosas que corre <code>kmain()</code>. La versión original llamaba a <code>bloque_leer(0, ...)</code> y usaba el resultado sin mirar si había salido bien — si el driver ATA se quedaba esperando para siempre (Módulo 2), <code>fs_iniciar()</code> ni siquiera llegaba a la línea del <code>if</code>: todo el arranque se congelaba ahí. Con el fix del Módulo 2 (que ahora devuelve error en vez de colgarse), acá hay que <b>revisar ese valor</b> antes de seguir.</p></div><div class="code-block" style="margin-top:16px">#define FS_MAGIC 0x544F5953  // 'TOYS'
 
+// Se llama una sola vez al arrancar. Decide si el disco ya tiene
+// nuestro sistema de archivos (magic number correcto -> montar) o si
+// hay que crearlo de cero (formatear) — pero ANTES que nada, corrobora
+// que el disco haya respondido.
 void fs_iniciar(void) {
-    bloque_leer(0, buffer_superbloque);
+    if (bloque_leer(0, buffer_superbloque) != 0) {
+        // el disco de datos no respondio (drive mal seleccionado,
+        // no esta conectado en el comando de QEMU, etc.) — antes esto
+        // colgaba el kernel entero; ahora avisamos y no seguimos.
+        vga_print("Error: no se pudo leer el disco de datos", 4, 0x0c);
+        return;
+    }
+
     if (((SuperBloque*)buffer_superbloque)->magic != FS_MAGIC) {
-        fs_formatear();
+        fs_formatear();  // disco vacio o de otro formato: lo inicializamos
     } else {
-        fs_montar();
+        fs_montar();      // ya es nuestro FS: leemos lo que ya habia
     }
 }</div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
 addSlide(`<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center;padding-top:6vh"><div class="eyebrow" style="justify-content:center">check de salida</div><h1 class="title"><i class="fa-solid fa-hard-drive accent"></i> Persistencia real</h1><p class="subtitle">Antes de cerrar: backend, sectores y montaje</p><button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso</button></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});

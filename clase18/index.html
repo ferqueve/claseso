@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Investigación Opcional — GUI Mínima</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f;
+  --bg-1:#0d131b;
+  --bg-2:#121a24;
+  --panel-border:#1f2b38;
+  --green:#39ff88;
+  --green-dim:#1f8a52;
+  --amber:#ffb454;
+  --red:#ff5c7a;
+  --teal:#4fd1c5;
+  --teal-dim:#276b64;
+  --text:#dbe4ea;
+  --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace;
+  --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{min-height:100%;}
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(79,209,197,0.08), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:var(--display);
+}
+::selection{ background:var(--teal); color:#04211d; }
+
+.crt-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:500;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+
+.statusbar{
+  position:sticky; top:0; z-index:200; height:46px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 22px;
+  background:linear-gradient(180deg, rgba(13,19,27,0.97), rgba(13,19,27,0.85));
+  border-bottom:1px solid var(--panel-border);
+  font-family:var(--mono); font-size:12.5px; color:var(--text-dim);
+  backdrop-filter:blur(4px);
+}
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--teal); box-shadow:0 0 6px var(--teal); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+#progress-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid var(--teal); color:var(--teal); }
+
+.wrap{ max-width:920px; margin:0 auto; padding:36px 20px 100px 20px; }
+
+.hero{ text-align:center; margin-bottom:22px; }
+.eyebrow{ font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--teal); display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; }
+.eyebrow::before, .eyebrow::after{ content:'//'; color:var(--text-dim); }
+h1.mega{ font-size:2.1rem; font-weight:700; margin:0 0 8px 0; }
+h1.mega .accent{ color:var(--teal); }
+.hero p{ color:var(--text-dim); font-size:1rem; max-width:680px; margin:0 auto; }
+
+.opt-banner{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--teal-dim); border-radius:10px;
+  padding:16px 20px; margin:24px 0 30px 0;
+  font-size:.92rem; color:var(--text);
+  display:flex; gap:14px; align-items:flex-start;
+}
+.opt-banner i{ color:var(--teal); font-size:1.2rem; margin-top:2px; }
+.opt-banner b{ color:var(--teal); }
+
+.panel{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:10px; padding:20px 24px; position:relative; margin-bottom:22px; }
+.panel::before{ content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, rgba(79,209,197,.4), transparent); }
+.term-tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px; background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px; }
+
+.point{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:12px; margin-bottom:22px; overflow:hidden; }
+.point-head{ display:flex; align-items:center; gap:14px; padding:18px 22px; border-bottom:1px solid var(--panel-border); }
+.point-num{ width:38px; height:38px; border-radius:50%; border:2px solid var(--teal-dim); color:var(--teal); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; flex-shrink:0; }
+.point-head h3{ margin:0; font-size:1.05rem; }
+.point-body{ padding:20px 22px; }
+.point-body p{ color:var(--text-dim); font-size:.92rem; margin-bottom:14px; }
+textarea.answer{
+  width:100%; min-height:90px; background:var(--bg-0); border:1px solid var(--panel-border);
+  border-radius:6px; color:var(--text); font-family:var(--mono); font-size:.85rem; padding:12px; resize:vertical;
+}
+textarea.answer:focus{ outline:none; border-color:var(--teal); }
+
+.btn-reveal{
+  margin-top:12px; background:transparent; border:1px solid var(--teal); color:var(--teal);
+  font-family:var(--mono); font-size:.8rem; padding:7px 16px; border-radius:5px; cursor:pointer;
+  transition:.15s;
+}
+.btn-reveal:hover{ background:var(--teal); color:#04211d; }
+
+.model-answer{
+  display:none; margin-top:14px; padding:14px 16px; background:var(--bg-0);
+  border-left:3px solid var(--teal); border-radius:0 6px 6px 0; font-size:.88rem; color:var(--text);
+}
+.model-answer.show{ display:block; }
+.model-answer .tag{ font-family:var(--mono); font-size:.7rem; color:var(--teal); text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:6px; }
+
+.delivery{ text-align:center; padding:34px 24px; }
+.delivery input{
+  background:var(--bg-0); border:1px solid var(--panel-border); color:var(--text);
+  font-family:var(--mono); padding:10px 14px; border-radius:6px; margin:6px; width:240px;
+}
+.btn-gen{ background:var(--teal); border:none; color:#04211d; font-weight:700; font-family:var(--mono); padding:10px 22px; border-radius:6px; cursor:pointer; margin:6px; }
+.code-box{ margin-top:16px; font-family:var(--mono); font-size:.95rem; background:var(--bg-0); border:1px dashed var(--teal); border-radius:6px; padding:14px; display:none; }
+.code-box.show{ display:block; }
+</style>
+</head>
+<body>
+
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SISTEMAS OPERATIVOS · MATERIAL OPCIONAL</div>
+  <div class="seg"><span id="progress-badge">0 / 6 exploradas</span></div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero animate__animated animate__fadeIn">
+    <div class="eyebrow">Extensión · No obligatoria</div>
+    <h1 class="mega">Investigación opcional: <span class="accent">una GUI mínima</span> para nuestro kernel</h1>
+    <p>El entregable obligatorio del curso sigue siendo la shell de línea de comandos. Esto es para quien quiera ir un poco más allá.</p>
+  </div>
+
+  <div class="opt-banner">
+    <i class="fa-solid fa-circle-info"></i>
+    <div>
+      <b>Esto no es parte de la nota del obligatorio.</b> La CLI que están construyendo es, y seguirá siendo, el entregable que se evalúa. Este material es para quien tenga curiosidad o quiera explorar un poco más por su cuenta — no hay expectativa de que todos lo hagan, y no completarlo no tiene ninguna consecuencia. Es investigación, no requiere escribir código funcionando.
+    </div>
+  </div>
+
+  <div class="panel">
+    <span class="term-tag">contexto</span>
+    <p style="color:var(--text-dim); font-size:.92rem; margin:0;">
+      Hoy el kernel imprime todo en <b style="color:var(--text)">modo texto VGA</b> (80×25 caracteres) y ya tiene un driver de teclado por interrupciones. Una interfaz gráfica de verdad implicaría cambiar a un <b style="color:var(--text)">modo gráfico de video</b>, dibujar pixel por pixel, y sumar un cursor de mouse — algo bastante más grande que la shell. Estos puntos van guiando esa idea, sin pedir que la implementen.
+    </p>
+  </div>
+
+  <!-- Punto 1 -->
+  <div class="point">
+    <div class="point-head"><div class="point-num">1</div><h3>Modo texto vs. modo gráfico</h3></div>
+    <div class="point-body">
+      <p>Investigá qué es el modo VGA 13h (320×200, 256 colores) y en qué se diferencia, a nivel de memoria y de hardware, del modo texto que usa hoy nuestro kernel. ¿Por qué un kernel que solo necesita imprimir texto elige quedarse en modo texto?</p>
+      <textarea class="answer" data-idx="0" placeholder="Escribí tu respuesta acá..."></textarea>
+      <button class="btn-reveal" onclick="revelar(0)">Ver respuesta modelo</button>
+      <div class="model-answer" id="model-0">
+        <span class="tag">Respuesta modelo</span>
+        El modo texto reserva una zona de memoria donde cada posición representa un carácter + un color, y es la propia tarjeta la que dibuja las letras — mucho más liviano y simple de programar. El modo 13h en cambio expone un framebuffer donde cada byte es literalmente un pixel: no hay "letras" de por sí, el programador tiene que dibujar todo, incluyendo el texto, con una fuente propia. Un kernel que solo necesita mostrar mensajes se queda en modo texto porque le alcanza y le ahorra muchísimo trabajo.
+      </div>
+    </div>
+  </div>
+
+  <!-- Punto 2 -->
+  <div class="point">
+    <div class="point-head"><div class="point-num">2</div><h3>El framebuffer lineal</h3></div>
+    <div class="point-body">
+      <p>El modo 13h expone su memoria de video como un bloque lineal en la dirección <code>0xA0000</code>. Investigá cómo se calcula, a partir de una coordenada (x, y), la posición exacta de memoria que hay que escribir para pintar un pixel. ¿Qué se necesitaría, a partir de esa idea, para dibujar una línea o un rectángulo?</p>
+      <textarea class="answer" data-idx="1" placeholder="Escribí tu respuesta acá..."></textarea>
+      <button class="btn-reveal" onclick="revelar(1)">Ver respuesta modelo</button>
+      <div class="model-answer" id="model-1">
+        <span class="tag">Respuesta modelo</span>
+        Con un ancho fijo de 320 pixeles por fila, la posición de un pixel (x, y) es <code>0xA0000 + y*320 + x</code>, y ahí se escribe un byte con el color (un índice de paleta). Una línea horizontal es simplemente recorrer esa fórmula variando x; un rectángulo relleno es anidar dos bucles (uno por fila, otro por columna) llamando a esa misma función "pintar_pixel" repetidamente. Todo lo demás — texto, íconos, ventanas — termina reduciéndose a llamadas repetidas a esa única primitiva.
+      </div>
+    </div>
+  </div>
+
+  <!-- Punto 3 -->
+  <div class="point">
+    <div class="point-head"><div class="point-num">3</div><h3>El mouse y su cursor</h3></div>
+    <div class="point-body">
+      <p>Ya conocen cómo el driver de teclado atiende una interrupción (IRQ1) para leer una tecla. El mouse PS/2 funciona parecido, pero por IRQ12, entregando paquetes de 3 bytes con movimiento relativo (dx, dy) y estado de los botones. Investigá qué problema aparece al querer <i>dibujar</i> un cursor que se mueve sobre esos datos, y cómo se resuelve para que el cursor no "manche" lo que había debajo.</p>
+      <textarea class="answer" data-idx="2" placeholder="Escribí tu respuesta acá..."></textarea>
+      <button class="btn-reveal" onclick="revelar(2)">Ver respuesta modelo</button>
+      <div class="model-answer" id="model-2">
+        <span class="tag">Respuesta modelo</span>
+        Si simplemente pintás el cursor en la nueva posición, los pixeles de la posición anterior quedan pintados para siempre — el cursor deja un "rastro". La solución típica es guardar, antes de dibujar el cursor, los pixeles que había debajo en esa zona; cuando el mouse se mueve, primero se restauran esos pixeles guardados (borrando el cursor viejo) y recién ahí se guarda y dibuja el cursor en la posición nueva. Es la misma idea de "doble buffer" en miniatura, aplicada solo a la zona del cursor.
+      </div>
+    </div>
+  </div>
+
+  <!-- Punto 4 -->
+  <div class="point">
+    <div class="point-head"><div class="point-num">4</div><h3>Cómo lo resuelve un SO real</h3></div>
+    <div class="point-body">
+      <p>Investigá, en un SO real (por ejemplo Linux con su "framebuffer console", o cómo arrancaban los primeros Windows en modo VGA/VESA antes de cargar sus drivers gráficos completos), cómo se maneja ese arranque en modo gráfico simple antes de que exista una interfaz gráfica completa.</p>
+      <textarea class="answer" data-idx="3" placeholder="Escribí tu respuesta acá..."></textarea>
+      <button class="btn-reveal" onclick="revelar(3)">Ver respuesta modelo</button>
+      <div class="model-answer" id="model-3">
+        <span class="tag">Respuesta modelo</span>
+        Linux tiene un "framebuffer console" (fbdev) que permite mostrar texto y gráficos simples muy temprano en el arranque, antes de que cargue ningún driver de tarjeta gráfica sofisticado — es, conceptualmente, un primo grande de lo que estamos describiendo acá. Windows, de forma similar, arrancaba históricamente en un modo VGA/VESA genérico y recién después cargaba el driver específico de la tarjeta para pasar a resoluciones y aceleración reales. En ambos casos, el modo gráfico simple es un escalón transitorio, no la interfaz final.
+      </div>
+    </div>
+  </div>
+
+  <!-- Punto 5 -->
+  <div class="point">
+    <div class="point-head"><div class="point-num">5</div><h3>¿Qué tan lejos queda una GUI de verdad?</h3></div>
+    <div class="point-body">
+      <p>Un gestor de ventanas real (X11, Win32, macOS) maneja superposición de ventanas, foco, redibujado parcial, eventos de decenas de aplicaciones a la vez. Reflexioná: ¿qué tan lejos está eso de lo que describimos en los puntos anteriores? ¿En qué momento un "cursor que se mueve sobre un fondo" deja de ser un experimento simple y se convierte en un proyecto en sí mismo?</p>
+      <textarea class="answer" data-idx="4" placeholder="Escribí tu reflexión acá..."></textarea>
+      <button class="btn-reveal" onclick="revelar(4)">Ver reflexión modelo</button>
+      <div class="model-answer" id="model-4">
+        <span class="tag">Reflexión modelo</span>
+        Lo que describimos (framebuffer + cursor) es apenas la base física sobre la que se construye una GUI. Un gestor de ventanas real necesita, además, decidir qué ventana está "arriba" de cuál, redibujar solo lo que cambió (no toda la pantalla), y enrutar cada click o tecla a la aplicación correcta — eso es un proyecto de años, no de una clase. El salto de dificultad no está en pintar pixeles, sino en toda la lógica de coordinación que aparece en cuanto hay más de una "cosa" en pantalla al mismo tiempo.
+      </div>
+    </div>
+  </div>
+
+  <!-- Punto 6 (bonus creativo) -->
+  <div class="point">
+    <div class="point-head"><div class="point-num">6</div><h3>Bonus: bosquejá tu propia mini-GUI</h3></div>
+    <div class="point-body">
+      <p>Sin programar nada: dibujá en papel, o describí acá, cómo se vería una versión mínima de nuestro kernel con interfaz gráfica — por ejemplo un fondo de color, un cursor, y un par de "botones" o ventanitas simples. No hay una respuesta modelo para este punto; es un ejercicio de diseño.</p>
+      <textarea class="answer" data-idx="5" placeholder="Describí tu idea acá (o contá que lo dibujaste en papel)..."></textarea>
+    </div>
+  </div>
+
+  <div class="panel delivery">
+    <span class="term-tag">opcional</span>
+    <p style="color:var(--text-dim); margin-bottom:16px;">Si quisiste explorar estos puntos y querés dejar constancia de que lo hiciste, podés generar un código para enviarlo. Es completamente a tu criterio.</p>
+    <input type="text" id="nombre" placeholder="Tu nombre">
+    <br>
+    <button class="btn-gen" onclick="generarCodigo()">Generar código de entrega</button>
+    <div class="code-box" id="codeBox"></div>
+  </div>
+
+</div>
+
+<script>
+let exploradas = new Set();
+
+function revelar(idx){
+  const el = document.getElementById('model-'+idx);
+  el.classList.toggle('show');
+  exploradas.add(idx);
+  document.getElementById('progress-badge').textContent = exploradas.size + ' / 6 exploradas';
+}
+
+document.querySelectorAll('.answer').forEach(t => {
+  t.addEventListener('input', () => {
+    if(t.value.trim().length > 5){
+      exploradas.add(parseInt(t.dataset.idx));
+      document.getElementById('progress-badge').textContent = exploradas.size + ' / 6 exploradas';
+    }
+  });
+});
+
+function generarCodigo(){
+  const nombre = document.getElementById('nombre').value.trim() || 'Anónimo';
+  const fecha = new Date().toLocaleDateString('es-UY');
+  const codigo = 'GUI-OPT-' + btoa(unescape(encodeURIComponent(nombre))).slice(0,8).toUpperCase() + '-' + fecha.replace(/\//g,'');
+  const box = document.getElementById('codeBox');
+  box.innerHTML = '<b>' + nombre + '</b> · ' + fecha + ' · ' + exploradas.size + '/6 puntos explorados<br><span style="color:var(--teal); font-size:1.1rem;">' + codigo + '</span>';
+  box.classList.add('show');
+}
+</script>
+
+</body>
+</html>

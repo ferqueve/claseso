@@ -181,6 +181,112 @@ void fs_iniciar(void) {
         fs_montar();      // ya es nuestro FS: leemos lo que ya habia
     }
 }</div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">el mapa de sectores</div><h1 class="title">¿Dónde vive <span class="accent">cada cosa</span> en el disco?</h1><div class="panel"><p style="margin:0">Antes de ver el código, hace falta decidir en qué sector físico va cada estructura. Sin este mapa, <code>fs_formatear()</code> y <code>fs_montar()</code> no saben dónde leer/escribir.</p></div><div class="code-block" style="margin-top:16px">#define SECTOR_SUPERBLOQUE    0   // 1 sector: magic number + contadores
+#define SECTOR_BITMAP         1   // 1 sector: NUM_BLOQUES bits (256 bits = 32 bytes, sobra lugar)
+#define SECTOR_INODOS_INICIO  2   // arranca la tabla de inodos
+#define SECTORES_INODOS       2   // 16 inodos x 56 bytes = 896 bytes -> 2 sectores
+#define SECTOR_DATOS_INICIO   4   // acá empiezan los bloques de datos reales</div><div class="panel" style="margin-top:16px;border-color:var(--amber)"><div class="term-tag" style="border-color:var(--amber);color:var(--amber)">mismo mapa mental que la Clase 8</div><p style="margin:0">Es exactamente la misma idea de superbloque + bitmap + tabla de inodos + bloques de datos que ya vieron con <code>disco_ram[]</code> — lo único que cambia es que ahora cada una de esas partes tiene un sector real y fijo en <code>data.img</code>, en vez de ser un simple índice dentro de un arreglo en RAM.</p></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">código completo · formatear</div><h1 class="title"><span class="accent">fs_formatear()</span>: dejar todo en cero, en RAM y en disco</h1><div class="code-block">void fs_formatear(void) {
+    unsigned char buffer[TAM_BLOQUE];
+    int i;
+
+    // 1. vaciar las estructuras EN RAM primero (igual que en la Clase 8)
+    for (i = 0; i < NUM_BLOQUES; i++)   bitmap_bloques[i] = 0;
+    for (i = 0; i < MAX_ARCHIVOS; i++)  tabla_inodos[i].ocupado = 0;
+
+    // 2. superbloque: magic number + contadores, en el sector 0
+    for (i = 0; i < TAM_BLOQUE; i++) buffer[i] = 0;
+    *(SuperBloque*)buffer = (SuperBloque){ FS_MAGIC, MAX_ARCHIVOS, NUM_BLOQUES };
+    bloque_escribir(SECTOR_SUPERBLOQUE, buffer);
+
+    // 3. bitmap: cabe entero en un solo sector
+    for (i = 0; i < TAM_BLOQUE; i++) buffer[i] = 0;
+    for (i = 0; i < NUM_BLOQUES; i++) buffer[i] = bitmap_bloques[i];
+    bloque_escribir(SECTOR_BITMAP, buffer);
+
+    // 4. tabla de inodos (puede ocupar mas de un sector: ver funcion aparte)
+    fs_persistir_inodos();
+}</div><div class="panel" style="margin-top:16px"><p style="margin:0">Notá el patrón que se repite en los 3 pasos: primero se arma la estructura <b>en RAM</b> (como siempre), y recién después se <b>copia a un buffer de 512 bytes</b> para bajarla a disco con <code>bloque_escribir()</code> — un sector a la vez.</p></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">código completo · montar</div><h1 class="title"><span class="accent">fs_montar()</span>: la operación inversa</h1><div class="code-block">void fs_montar(void) {
+    unsigned char buffer[TAM_BLOQUE];
+    int i;
+
+    // leer el bitmap de vuelta a RAM
+    bloque_leer(SECTOR_BITMAP, buffer);
+    for (i = 0; i < NUM_BLOQUES; i++) bitmap_bloques[i] = buffer[i];
+
+    // leer la tabla de inodos de vuelta a RAM (puede ser > 1 sector)
+    fs_leer_inodos();
+}
+
+// Copia MAX_ARCHIVOS * sizeof(inodo_t) bytes, sector a sector, tratando
+// tabla_inodos como un simple arreglo de bytes — no tenemos memcpy, asi
+// que se hace a mano, byte por byte.
+static void fs_persistir_inodos(void) {
+    unsigned char buffer[TAM_BLOQUE];
+    unsigned char *origen = (unsigned char*) tabla_inodos;
+    int total = MAX_ARCHIVOS * sizeof(inodo_t);
+    int escritos = 0, sector = SECTOR_INODOS_INICIO;
+
+    while (escritos < total) {
+        for (int i = 0; i < TAM_BLOQUE; i++) {
+            int idx = escritos + i;
+            buffer[i] = (idx < total) ? origen[idx] : 0;
+        }
+        bloque_escribir(sector, buffer);
+        escritos += TAM_BLOQUE;
+        sector++;
+    }
+}
+
+static void fs_leer_inodos(void) {
+    unsigned char buffer[TAM_BLOQUE];
+    unsigned char *destino = (unsigned char*) tabla_inodos;
+    int total = MAX_ARCHIVOS * sizeof(inodo_t);
+    int leidos = 0, sector = SECTOR_INODOS_INICIO;
+
+    while (leidos < total) {
+        bloque_leer(sector, buffer);
+        for (int i = 0; i < TAM_BLOQUE && leidos + i < total; i++)
+            destino[leidos + i] = buffer[i];
+        leidos += TAM_BLOQUE;
+        sector++;
+    }
+}</div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">la pieza que faltaba</div><h1 class="title">Formatear y montar <span class="accent">NO alcanzan</span></h1><div class="panel" style="border-color:var(--red)"><div class="term-tag" style="border-color:var(--red);color:var(--red)">acá está el "falta algo para que el guardado sea efectivo"</div><p style="margin:0"><code>fs_iniciar()</code> corre <b>una sola vez</b>, al arrancar. Pero <code>fs_crear()</code> y <code>fs_escribir()</code> (las funciones de la Clase 8) siguen escritas para trabajar <b>solo en RAM</b>, exactamente como con <code>disco_ram[]</code>. Si no las tocamos, un archivo creado durante la sesión se ve y se lee perfecto — hasta que reiniciás. En ese momento <code>fs_montar()</code> vuelve a leer la tabla de inodos <b>vieja</b> (la de la última vez que se guardó), porque nadie avisó del cambio nuevo.</p></div><div class="panel" style="margin-top:16px"><p style="margin:0"><b>La regla:</b> cada vez que <code>fs_crear()</code> o <code>fs_escribir()</code> modifican algo en RAM (la tabla de inodos, el bitmap, o el contenido de un bloque), tienen que <b>persistir ese cambio de inmediato</b> — no alcanza con guardarlo "para la próxima vez que formatee".</p></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">fs_crear() y fs_escribir(), adaptadas</div><h1 class="title">Persistir <span class="accent">cada cambio</span>, no solo al formatear</h1><div class="code-block" style="font-size:.8rem">int fs_crear(const char *nombre) {
+    for (int i = 0; i < MAX_ARCHIVOS; i++) {
+        if (tabla_inodos[i].ocupado) continue;
+
+        // ... copiar nombre, buscar un bloque libre en bitmap_bloques ...
+        tabla_inodos[i].ocupado = 1;
+
+        // *** LO QUE FALTABA: bajar el cambio a disco ahora mismo ***
+        fs_persistir_inodos();   // la tabla de inodos cambio
+        fs_persistir_bitmap();   // el bitmap tambien cambio
+
+        return i;
+    }
+    return -1;
+}
+
+int fs_escribir(int inodo, const unsigned char *datos, unsigned int tamano) {
+    if (inodo < 0 || inodo >= MAX_ARCHIVOS || !tabla_inodos[inodo].ocupado)
+        return -1;
+
+    int bloque = tabla_inodos[inodo].bloques[0];
+    unsigned char buffer[TAM_BLOQUE];
+    for (unsigned int i = 0; i < tamano; i++) buffer[i] = datos[i];
+
+    // *** LO QUE FALTABA: el contenido va al disco real, no a disco_ram ***
+    bloque_escribir(SECTOR_DATOS_INICIO + bloque, buffer);
+
+    tabla_inodos[inodo].tamano = tamano;
+    fs_persistir_inodos();   // el tamaño del archivo tambien cambio
+
+    return 0;
+}</div><div class="panel" style="margin-top:16px;border-color:var(--amber)"><div class="term-tag" style="border-color:var(--amber);color:var(--amber)">costo vs. seguridad</div><p style="margin:0">Persistir la tabla de inodos ENTERA en cada <code>fs_crear()</code>/<code>fs_escribir()</code> es simple pero no es lo más eficiente — un SO real agrupa varios cambios y los baja de a poco (esto se llama <i>write-back caching</i>). Para el kernel de juguete, priorizamos que sea fácil de entender y confiable: mejor "más lento pero siempre correcto" que perder datos por optimizar antes de tiempo.</p></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
+addSlide(`<div class="slide-inner animate__animated animate__fadeInUp"><div class="eyebrow">para probar que funciona de verdad</div><h1 class="title">La prueba real de <span class="accent">persistencia</span></h1><div class="panel"><ul class="checklist"><li>Arrancás con <code>data.img</code> vacío — <code>fs_iniciar()</code> lo formatea.</li><li>Creás un archivo y le escribís contenido (<code>crear</code> + <code>escribir</code> desde el shell).</li><li>Apagás QEMU por completo (no reiniciás la VM, cerrás el proceso).</li><li>Volvés a arrancar con el <b>mismo</b> <code>data.img</code>.</li><li><code>fs_iniciar()</code> encuentra el magic number y monta en vez de formatear.</li><li>Leés el archivo: si el contenido sigue ahí, la persistencia es real.</li></ul></div><div class="panel" style="margin-top:16px;border-color:var(--red)"><div class="term-tag" style="border-color:var(--red);color:var(--red)">si falla acá</div><p style="margin:0">Si el archivo aparece vacío o no existe después de reiniciar, casi seguro <code>fs_crear()</code>/<code>fs_escribir()</code> todavía no llaman a <code>fs_persistir_inodos()</code>/<code>bloque_escribir()</code> — revisen que esas líneas realmente estén ahí y no solo en la teoría.</p></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
 addSlide(`<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center;padding-top:6vh"><div class="eyebrow" style="justify-content:center">check de salida</div><h1 class="title"><i class="fa-solid fa-hard-drive accent"></i> Persistencia real</h1><p class="subtitle">Antes de cerrar: backend, sectores y montaje</p><button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso</button></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
 addSlide(`<div class="cover animate__animated animate__fadeIn"><div class="eyebrow">fin de sesión</div><h1 class="mega">Ahora el kernel<br><span class="kernel">recuerda</span></h1><div class="panel" style="margin-top:20px;max-width:760px"><div class="term-tag">siguiente paso</div><ul class="checklist"><li>Probar crear un archivo, reiniciar QEMU y leerlo nuevamente.</li><li>Documentar qué funciones del FS todavía dependen de <code>disco_ram</code>.</li><li>La próxima presentación arma una shell mínima para usar el FS desde teclado.</li></ul></div></div>`,{module:3,mtype:'practica',clock:'21:05 – 22:30'});
 

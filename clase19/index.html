@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO · Un Proceso Propio que Guarda de Verdad</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070a0f; --bg-1:#0d131b; --bg-2:#121a24; --panel-border:#1f2b38;
+  --green:#39ff88; --green-dim:#1f8a52; --amber:#ffb454; --cyan:#5ccfe6;
+  --sand:#d4a373; --sand-dim:#7a5a3a; --red:#ff5c7a;
+  --text:#dbe4ea; --text-dim:#6d7c8c;
+  --mono:'JetBrains Mono', monospace; --display:'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:
+    radial-gradient(ellipse at top left, rgba(212,163,115,0.07), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(57,255,136,0.05), transparent 50%),
+    var(--bg-0);
+  color:var(--text); font-family:var(--display); overflow:hidden; height:100vh;
+}
+::selection{ background:var(--sand); color:#211505; }
+.crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:500; background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; }
+
+.statusbar{ position:fixed; top:0; left:0; right:0; height:42px; z-index:200; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:linear-gradient(180deg, rgba(13,19,27,0.95), rgba(13,19,27,0.75)); border-bottom:1px solid var(--panel-border); font-family:var(--mono); font-size:12.5px; color:var(--text-dim); }
+.statusbar .seg{ display:flex; align-items:center; gap:8px; }
+.statusbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--sand); box-shadow:0 0 6px var(--sand); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.statusbar .cursor{ display:inline-block; width:7px; background:var(--green); margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+#module-badge{ font-weight:700; padding:2px 10px; border-radius:3px; border:1px solid currentColor; }
+.mod-teoria{ color:var(--cyan); }
+.mod-practica{ color:var(--amber); }
+
+.progress-rail{ position:fixed; top:42px; left:0; right:0; height:3px; background:var(--bg-2); z-index:200; }
+.progress-fill{ height:100%; background:linear-gradient(90deg, var(--sand-dim), var(--sand)); box-shadow:0 0 8px var(--sand); transition:width .5s ease; }
+
+.deck{ position:relative; height:100vh; width:100vw; padding-top:45px; }
+.slide{ position:absolute; inset:0; top:45px; display:none; padding:38px 64px 74px 64px; overflow-y:auto; }
+.slide.active{ display:block; }
+.slide-inner{ max-width:1180px; margin:0 auto; }
+
+.eyebrow{ font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--sand); display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.eyebrow::before{ content:'//'; color:var(--text-dim); }
+
+h1.title{ font-size:2.4rem; font-weight:700; margin:0 0 .3rem 0; line-height:1.1; }
+h2.subtitle{ font-size:1.05rem; font-weight:400; color:var(--text-dim); margin-bottom:1.5rem; }
+.accent{ color:var(--sand); }
+.accent-amber{ color:var(--amber); }
+.accent-cyan{ color:var(--cyan); }
+.accent-green{ color:var(--green); }
+
+.panel{ background:linear-gradient(180deg, var(--bg-1), var(--bg-2)); border:1px solid var(--panel-border); border-radius:10px; padding:22px 26px; position:relative; }
+.panel::before{ content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, rgba(212,163,115,.4), transparent); }
+.term-tag{ font-family:var(--mono); font-size:11px; color:var(--text-dim); position:absolute; top:-10px; left:16px; background:var(--bg-0); padding:0 6px; border:1px solid var(--panel-border); border-radius:3px; }
+
+.cover{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; }
+.boot-lines{ font-family:var(--mono); font-size:12px; color:#7a5a3a; margin-bottom:24px; line-height:1.85; }
+.boot-lines .ok{ color:var(--green); }
+.mega{ font-size:2.7rem; font-weight:700; line-height:1.1; margin:0; }
+.mega .kernel{ color:var(--sand); }
+
+.mod-hero{ height:calc(100vh - 45px); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.mod-num{ font-family:var(--mono); font-size:5rem; font-weight:700; opacity:.18; position:absolute; right:70px; top:90px; }
+
+ul.checklist{ list-style:none; padding:0; margin:0; }
+ul.checklist li{ padding:8px 0 8px 28px; position:relative; border-bottom:1px dashed var(--panel-border); font-size:1rem; }
+ul.checklist li:last-child{ border-bottom:none; }
+ul.checklist li::before{ content:'\f00c'; font-family:'Font Awesome 6 Free'; font-weight:900; color:var(--green); position:absolute; left:0; top:8px; font-size:.82rem; }
+
+.grid-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.card-min{ background:var(--bg-1); border:1px solid var(--panel-border); border-radius:8px; padding:16px; }
+.card-min i{ color:var(--cyan); font-size:1.2rem; margin-bottom:6px; display:block; }
+.card-min h4{ font-size:.95rem; margin-bottom:3px; }
+.card-min p{ font-size:.8rem; color:var(--text-dim); margin:0; }
+
+.code-block{ background:#04070b; border:1px solid var(--panel-border); border-radius:8px; padding:15px 17px; font-family:var(--mono); font-size:.8rem; color:var(--cyan); overflow-x:auto; white-space:pre; line-height:1.65; }
+.code-block .c-green{ color:var(--green); }
+.code-block .c-dim{ color:var(--text-dim); }
+.code-block .c-amber{ color:var(--amber); }
+.code-block .c-sand{ color:var(--sand); }
+.code-block .c-red{ color:var(--red); }
+
+.screen{ background:#000; border:2px solid #333; border-radius:6px; padding:14px 18px; font-family:var(--mono); font-size:.88rem; line-height:1.85; color:#e0e0e0; }
+.screen .ok-line{ color:#39ff88; font-weight:700; }
+
+table.cmp{ width:100%; border-collapse:collapse; font-size:.85rem; }
+table.cmp th{ font-family:var(--mono); text-transform:uppercase; font-size:.68rem; letter-spacing:.05em; color:var(--text-dim); border-bottom:1px solid var(--panel-border); padding:7px 9px; text-align:left; }
+table.cmp td{ padding:8px 9px; border-bottom:1px solid var(--panel-border); }
+
+.btn-quiz{ background:transparent; border:1px solid var(--sand-dim); color:var(--sand); font-family:var(--mono); border-radius:6px; padding:10px 18px; font-size:.85rem; transition:.2s; }
+.btn-quiz:hover{ background:var(--sand); color:#211505; }
+
+.nav-btn{ position:fixed; top:50%; transform:translateY(-50%); z-index:150; width:46px; height:46px; border-radius:50%; border:1px solid var(--panel-border); background:rgba(13,19,27,.85); color:var(--text-dim); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; backdrop-filter:blur(3px); }
+.nav-btn:hover{ color:var(--sand); border-color:var(--sand-dim); }
+#prevBtn{ left:16px; } #nextBtn{ right:16px; }
+
+.slide-counter{ position:fixed; bottom:14px; right:24px; z-index:150; font-family:var(--mono); font-size:.78rem; color:var(--text-dim); }
+.slide-dots{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:150; display:flex; gap:6px; }
+.slide-dots span{ width:6px; height:6px; border-radius:50%; background:var(--panel-border); cursor:pointer; }
+.slide-dots span.on{ background:var(--sand); box-shadow:0 0 6px var(--sand); }
+
+.swal2-popup.so-popup{ background:var(--bg-1) !important; color:var(--text) !important; border:1px solid var(--panel-border); font-family:var(--display); }
+.so-title{ font-family:var(--mono) !important; font-size:1.1rem !important; color:var(--sand) !important; }
+
+@media (max-width: 768px){ .mega{ font-size:1.7rem; } h1.title{ font-size:1.4rem; } .slide{ padding:22px 18px 90px 18px; } .mod-num{ display:none; } }
+</style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<div class="statusbar">
+  <div class="seg"><span class="dot"></span> SO · CAMPUS SALTO <span class="cursor">&nbsp;</span></div>
+  <div class="seg" id="module-badge">MÓDULO 1 · TEORÍA</div>
+  <div class="seg"><i class="fa-solid fa-floppy-disk"></i> Acoplando procesos + persistencia</div>
+</div>
+<div class="progress-rail"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="deck" id="deck"></div>
+
+<div class="nav-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></div>
+<div class="nav-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></div>
+<div class="slide-counter"><span id="counterNow">1</span> / <span id="counterTotal">1</span></div>
+<div class="slide-dots" id="dotsWrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.7/sweetalert2.all.min.js"></script>
+
+<script>
+const slides = [];
+function addSlide(html, opts={}){
+  slides.push({html, module:opts.module || 1, mtype: opts.mtype || 'teoria'});
+}
+
+/* ---------- SLIDE 0 · COVER ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="boot-lines">
+    <div>[ <span class="ok">OK</span> ] Montando disco de datos ................ data.img</div>
+    <div>[ <span class="ok">OK</span> ] Creando proceso ........................ contador_persistente</div>
+    <div>[ <span class="ok">OK</span> ] Verificando entre 2 arranques distintos</div>
+  </div>
+  <div class="eyebrow">acoplando clases 5 + 13</div>
+  <h1 class="mega">Un proceso propio<br>que <span class="kernel">guarda de verdad</span></h1>
+  <h2 class="subtitle" style="margin-top:1rem;">Paso a paso: crear un proceso, engancharlo al kernel, y confirmar que persiste</h2>
+  <div style="font-family:var(--mono); font-size:.85rem; color:var(--text-dim);">
+    <i class="fa-solid fa-keyboard"></i> usá <span class="accent">← →</span> para navegar
+  </div>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 1 · EL PROBLEMA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">por qué esta clase</div>
+  <h1 class="title">"Consigo <span class="accent">guardar</span>, pero no <span class="accent-amber">persiste</span>"</h1>
+  <div class="panel">
+    <p style="font-size:1.02rem; line-height:1.7;">
+      Con el fix de la Clase 13, <code>fs_crear()</code>/<code>fs_escribir()</code> ya SÍ bajan los cambios a disco.
+      Pero es común que un equipo escriba su propio proceso, lo pruebe, vea que "funciona" en la misma
+      sesión — y al reiniciar, descubra que no quedó nada guardado. El código de persistencia puede
+      estar perfecto y aun así fallar por <b>cómo se lo usa</b>.
+    </p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-sort"></i><h4>Orden de arranque</h4><p>¿Se llamó a fs_iniciar() ANTES de crear el proceso?</p></div>
+    <div class="card-min"><i class="fa-solid fa-vial"></i><h4>Cómo se prueba</h4><p>¿Realmente se apagó y prendió QEMU con el mismo data.img?</p></div>
+    <div class="card-min"><i class="fa-solid fa-print"></i><h4>Falsos negativos</h4><p>A veces SÍ persiste, pero lo que falla es solo cómo se muestra en pantalla</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 2 · EL PLAN ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">el ejemplo de hoy</div>
+  <h1 class="title">Un <span class="accent">contador persistente</span></h1>
+  <div class="panel">
+    <p>Vamos a escribir un proceso bien simple: cada vez que el kernel arranca, este proceso lee un número guardado en <code>contador.dat</code>, lo incrementa en 1, y lo vuelve a guardar. Si la persistencia funciona de verdad, el número tiene que subir en cada arranque — 1, 2, 3... — no reiniciar siempre en 1.</p>
+  </div>
+  <div class="grid-cards" style="margin-top:16px;">
+    <div class="card-min"><i class="fa-solid fa-microchip"></i><h4>Clase 5</h4><p>Cómo se escribe y engancha un proceso al scheduler</p></div>
+    <div class="card-min"><i class="fa-solid fa-hard-drive"></i><h4>Clase 13</h4><p>fs_crear/fs_leer/fs_escribir ya persisten a disco de verdad</p></div>
+    <div class="card-min"><i class="fa-solid fa-link"></i><h4>Hoy</h4><p>Juntar las dos piezas en un ejemplo end-to-end, verificable</p></div>
+  </div>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 3 · QUIZ MODULO 1 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 1</div>
+  <h1 class="title"><i class="fa-solid fa-floppy-disk accent"></i> Antes del código</h1>
+  <p class="subtitle">Repasemos por qué "guardar" y "persistir" no son lo mismo</p>
+  <button class="btn-quiz" onclick="quizModulo1()"><i class="fa-solid fa-play"></i> Iniciar repaso</button>
+</div>
+`, {module:1, mtype:'teoria'});
+
+/* ---------- SLIDE 4 · TRANSICION MODULO 2 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num accent-amber">02</div>
+  <div class="eyebrow">módulo 2 · práctica</div>
+  <h1 class="mega" style="font-size:2.6rem;">Escribiendo el<br><span class="kernel" style="color:var(--amber);">proceso</span>, paso a paso</h1>
+  <h2 class="subtitle">De cero a un contador que persiste</h2>
+</div>
+`, {module:2, mtype:'practica'});
+
+/* ---------- SLIDE 5 · HERRAMIENTAS QUE FALTAN ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">paso 1 · lo que nos falta primero</div>
+  <h1 class="title">Convertir números <span class="accent-amber">a texto y viceversa</span></h1>
+  <div class="panel">
+    <p>Nuestro sistema de archivos guarda <b>bytes</b>, no números — así que para guardar "el valor 7" en realidad guardamos el texto <code>"7"</code>. Como no tenemos <code>libc</code>, escribimos nuestras propias versiones mínimas de <code>itoa</code> y <code>atoi</code>.</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// convierte un numero (siempre positivo, en nuestro caso) a texto</span>
+<span class="c-sand">static void</span> itoa_simple(<span class="c-sand">unsigned int</span> valor, <span class="c-sand">char</span> *buf) {
+    <span class="c-sand">char</span> temp[12];
+    <span class="c-sand">int</span> i = <span class="c-amber">0</span>;
+
+    <span class="c-dim">// caso especial: si es 0, no entra al while de abajo</span>
+    <span class="c-sand">if</span> (valor == <span class="c-amber">0</span>) { buf[<span class="c-amber">0</span>] = <span class="c-green">'0'</span>; buf[<span class="c-amber">1</span>] = <span class="c-amber">0</span>; <span class="c-sand">return</span>; }
+
+    <span class="c-dim">// vamos sacando digitos de derecha a izquierda...</span>
+    <span class="c-sand">while</span> (valor > <span class="c-amber">0</span>) {
+        temp[i++] = <span class="c-green">'0'</span> + (valor % <span class="c-amber">10</span>);
+        valor /= <span class="c-amber">10</span>;
+    }
+    <span class="c-dim">// ...y los damos vuelta al copiarlos (quedaron al reves en temp)</span>
+    <span class="c-sand">int</span> j = <span class="c-amber">0</span>;
+    <span class="c-sand">while</span> (i > <span class="c-amber">0</span>) buf[j++] = temp[--i];
+    buf[j] = <span class="c-amber">0</span>;
+}
+
+<span class="c-dim">// convierte texto (solo digitos) de vuelta a numero</span>
+<span class="c-sand">static unsigned int</span> atoi_simple(<span class="c-sand">const char</span> *texto, <span class="c-sand">unsigned int</span> longitud) {
+    <span class="c-sand">unsigned int</span> valor = <span class="c-amber">0</span>;
+    <span class="c-sand">for</span> (<span class="c-sand">unsigned int</span> i = <span class="c-amber">0</span>; i < longitud; i++) {
+        <span class="c-sand">if</span> (texto[i] < <span class="c-green">'0'</span> || texto[i] > <span class="c-green">'9'</span>) <span class="c-sand">break</span>;
+        valor = valor * <span class="c-amber">10</span> + (texto[i] - <span class="c-green">'0'</span>);
+    }
+    <span class="c-sand">return</span> valor;
+}</div>
+</div>
+`, {module:2, mtype:'practica'});
+
+/* ---------- SLIDE 6 · EL PROCESO COMPLETO ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">paso 2 · el proceso completo</div>
+  <h1 class="title"><span class="accent-amber">proceso_contador_persistente()</span></h1>
+  <div class="code-block" style="font-size:.76rem;">
+<span class="c-sand">void</span> proceso_contador_persistente(<span class="c-sand">void</span>) {
+    <span class="c-sand">unsigned char</span> buffer[<span class="c-amber">16</span>];
+    <span class="c-sand">unsigned int</span> valor;
+
+    <span class="c-dim">// 1. ¿ya existe el archivo de una corrida anterior?</span>
+    <span class="c-sand">int</span> inodo = fs_buscar(<span class="c-green">"contador.dat"</span>);
+
+    <span class="c-sand">if</span> (inodo == -<span class="c-amber">1</span>) {
+        <span class="c-dim">// primera vez: no existe todavia, arrancamos de 0</span>
+        inodo = fs_crear(<span class="c-green">"contador.dat"</span>);
+        valor = <span class="c-amber">0</span>;
+    } <span class="c-sand">else</span> {
+        <span class="c-dim">// ya existia: leemos el valor que quedo la ultima vez</span>
+        <span class="c-sand">unsigned int</span> n = fs_leer(inodo, buffer);
+        valor = atoi_simple((<span class="c-sand">char</span>*)buffer, n);
+    }
+
+    valor = valor + <span class="c-amber">1</span>;   <span class="c-dim">// 2. incrementar</span>
+
+    <span class="c-dim">// 3. volver a guardarlo — ACA es donde pasa la persistencia real</span>
+    <span class="c-sand">char</span> texto[<span class="c-amber">16</span>];
+    itoa_simple(valor, texto);
+    <span class="c-sand">int</span> largo = <span class="c-amber">0</span>;
+    <span class="c-sand">while</span> (texto[largo] != <span class="c-amber">0</span>) largo++;
+    fs_escribir(inodo, (<span class="c-sand">unsigned char</span>*)texto, largo);
+
+    <span class="c-dim">// 4. mostrar el resultado (ver la proxima diapositiva: bug clasico acá)</span>
+    <span class="c-sand">char</span> mensaje[<span class="c-amber">32</span>];
+    <span class="c-sand">int</span> i = <span class="c-amber">0</span>;
+    <span class="c-sand">const char</span> *etiqueta = <span class="c-green">"contador.dat = "</span>;
+    <span class="c-sand">while</span> (*etiqueta) mensaje[i++] = *etiqueta++;
+    <span class="c-sand">int</span> j = <span class="c-amber">0</span>;
+    <span class="c-sand">while</span> (texto[j]) mensaje[i++] = texto[j++];
+    mensaje[i] = <span class="c-amber">0</span>;
+
+    vga_print(mensaje, <span class="c-amber">15</span>, <span class="c-amber">0x0a</span>);
+}</div>
+</div>
+`, {module:2, mtype:'practica'});
+
+/* ---------- SLIDE 7 · EL BUG CLASICO QUE PARECE UN FALLO DE PERSISTENCIA ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">un "falso negativo" muy común</div>
+  <h1 class="title">A veces SÍ persiste, pero <span class="accent">no se ve</span></h1>
+  <div class="panel" style="border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">el error que NO cometimos, pero es tentador cometer</div>
+    <p style="margin:0;">Es muy tentador escribir esto en el paso 4, en vez de armar un solo mensaje:</p>
+  </div>
+  <div class="code-block" style="margin-top:16px;">
+<span class="c-dim">// ¡ojo! esto NO funciona como uno esperaría:</span>
+vga_print(<span class="c-green">"contador.dat = "</span>, <span class="c-amber">15</span>, <span class="c-amber">0x0f</span>);
+vga_print(texto, <span class="c-amber">15</span>, <span class="c-amber">0x0a</span>);  <span class="c-red">// ← esto PISA lo anterior</span>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <p style="margin:0;"><code>vga_print()</code> siempre empieza a escribir desde la <b>columna 0</b> de la fila que le pasás. Dos llamadas seguidas en la misma fila se pisan entre sí — vas a ver solo el número, sin la etiqueta (o ni eso). El dato en disco puede estar perfecto; lo único roto es cómo se muestra en pantalla. Por eso armamos <b>un solo mensaje completo</b> antes de imprimir, como en la diapositiva anterior.</p>
+  </div>
+</div>
+`, {module:2, mtype:'practica'});
+
+/* ---------- SLIDE 8 · QUIZ MODULO 2 ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · módulo 2</div>
+  <h1 class="title"><i class="fa-solid fa-code accent-amber"></i> Verificación rápida</h1>
+  <p class="subtitle">Sobre el proceso que escribimos</p>
+  <button class="btn-quiz" onclick="quizModulo2()" style="border-color:var(--amber); color:var(--amber);">
+    <i class="fa-solid fa-play"></i> Iniciar repaso
+  </button>
+</div>
+`, {module:2, mtype:'practica'});
+
+/* ---------- SLIDE 9 · TRANSICION MODULO 3 ---------- */
+addSlide(`
+<div class="mod-hero animate__animated animate__fadeIn">
+  <div class="mod-num">03</div>
+  <div class="eyebrow">módulo 3 · práctica</div>
+  <h1 class="mega" style="font-size:2.6rem;">Acoplarlo al<br><span class="kernel">kernel</span>, y probarlo</h1>
+  <h2 class="subtitle">El orden importa — y cómo confirmarlo de verdad</h2>
+</div>
+`, {module:3, mtype:'practica'});
+
+/* ---------- SLIDE 10 · ACOPLAR AL KERNEL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">paso 3 · engancharlo en kmain()</div>
+  <h1 class="title">El <span class="accent">orden</span> es lo que más falla</h1>
+  <div class="code-block">
+<span class="c-sand">void</span> kmain(<span class="c-sand">void</span>) {
+    <span class="c-dim">// ... demos anteriores (memoria, arranque, etc.) ...</span>
+
+    fs_iniciar();  <span class="c-red">// ← Clase 13: monta o formatea data.img</span>
+                    <span class="c-dim">//   TIENE que ir ANTES de crear el proceso</span>
+
+    crear_proceso(proceso_contador_persistente);
+    procesos[<span class="c-amber">0</span>].estado = CORRIENDO;
+    proceso_actual = <span class="c-amber">0</span>;
+    cambiar_contexto(&contexto_kmain, &procesos[<span class="c-amber">0</span>].ctx);
+
+    shell_ejecutar();  <span class="c-dim">// Clase 14: shell interactiva, despues</span>
+}</div>
+  <div class="panel" style="margin-top:16px; border-color:var(--red);">
+    <div class="term-tag" style="border-color:var(--red); color:var(--red);">el motivo más común de "no persiste"</div>
+    <p style="margin:0;">Si <code>crear_proceso(proceso_contador_persistente)</code> se llama <b>antes</b> que <code>fs_iniciar()</code>, la tabla de inodos todavía no se levantó del disco (o ni siquiera está inicializada) — el proceso corre sin errores, pero <code>fs_buscar()</code> nunca va a encontrar el archivo de la vez anterior, así que siempre "cree" que es la primera vez.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica'});
+
+/* ---------- SLIDE 11 · CHECKLIST DE ERRORES COMUNES ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">antes de decir "no funciona"</div>
+  <h1 class="title">Checklist de los <span class="accent">5 motivos</span> más probables</h1>
+  <div class="panel">
+    <ul class="checklist">
+      <li><b>Orden:</b> ¿<code>fs_iniciar()</code> se llama ANTES de crear el proceso?</li>
+      <li><b>Mismo disco:</b> ¿realmente están arrancando con el MISMO <code>data.img</code> las dos veces (no uno nuevo por accidente)?</li>
+      <li><b>Apagado real:</b> ¿cerraron el proceso de QEMU por completo, no solo reiniciaron la VM con un reset?</li>
+      <li><b>Persistencia dentro de fs_crear/fs_escribir:</b> ¿esas dos funciones llaman a <code>bloque_escribir()</code>/<code>fs_persistir_inodos()</code> (Clase 13), o siguen siendo la versión de la Clase 8 que solo escribe en RAM?</li>
+      <li><b>Falso negativo de pantalla:</b> ¿el problema es realmente la persistencia, o es el bug de dos <code>vga_print()</code> pisándose en la misma fila?</li>
+    </ul>
+  </div>
+</div>
+`, {module:3, mtype:'practica'});
+
+/* ---------- SLIDE 12 · LA PRUEBA REAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp">
+  <div class="eyebrow">paso 4 · la prueba que realmente demuestra algo</div>
+  <h1 class="title">Dos arranques, <span class="accent">un solo disco</span></h1>
+  <div class="panel">
+    <p>Verificado con la misma lógica en un programa aparte (no el kernel, para probar el algoritmo rápido): 3 "arranques" consecutivos, reusando el mismo archivo de datos entre corrida y corrida:</p>
+  </div>
+  <div class="screen" style="margin-top:16px;">
+=== arranque 1 (disco vacío) ===<br>
+<span class="ok-line">contador.dat = 1</span><br>
+=== arranque 2 (mismo data.img) ===<br>
+<span class="ok-line">contador.dat = 2</span><br>
+=== arranque 3 ===<br>
+<span class="ok-line">contador.dat = 3</span>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="term-tag">cómo probarlo ustedes, con QEMU real</div>
+    <p style="margin:0;"><code>make run</code> (primera vez) → ver <code>contador.dat = 1</code> → cerrar QEMU del todo → <code>make run</code> de nuevo con el mismo <code>data.img</code> → si ven <code>contador.dat = 2</code>, la persistencia es real, no solo teórica.</p>
+  </div>
+</div>
+`, {module:3, mtype:'practica'});
+
+/* ---------- SLIDE 13 · QUIZ FINAL ---------- */
+addSlide(`
+<div class="slide-inner animate__animated animate__fadeInUp" style="text-align:center; padding-top:6vh;">
+  <div class="eyebrow" style="justify-content:center;">check de salida · clase</div>
+  <h1 class="title"><i class="fa-solid fa-flag-checkered accent"></i> Cierre</h1>
+  <p class="subtitle">Últimas preguntas antes de que lo prueben ustedes</p>
+  <button class="btn-quiz" onclick="quizFinal()"><i class="fa-solid fa-play"></i> Iniciar repaso final</button>
+</div>
+`, {module:3, mtype:'practica'});
+
+/* ---------- SLIDE 14 · CIERRE ---------- */
+addSlide(`
+<div class="cover animate__animated animate__fadeIn">
+  <div class="eyebrow">fin de sesión</div>
+  <h1 class="mega" style="font-size:2.4rem;">Un proceso propio,<br>con datos que <span class="kernel">sobreviven</span></h1>
+  <div class="panel" style="margin-top:20px; max-width:680px;">
+    <div class="term-tag">para el equipo</div>
+    <ul class="checklist">
+      <li>Escriban su propio proceso siguiendo este mismo patrón (buscar → crear si no existe → leer o inicializar → modificar → guardar)</li>
+      <li>Prueben SIEMPRE con 2 arranques reales, no solo mirando el código</li>
+      <li>Si algo no persiste, revisen el checklist de 5 motivos antes de asumir que es un bug nuevo</li>
+    </ul>
+  </div>
+  <div class="boot-lines" style="margin-top:20px;">[ <span class="ok">OK</span> ] Sesión finalizada.</div>
+</div>
+`, {module:3, mtype:'practica'});
+
+/* ============================================================
+   MOTOR DE NAVEGACIÓN
+   ============================================================ */
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsWrap = document.getElementById('dotsWrap');
+
+slides.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.id = 'slide-' + i;
+  div.innerHTML = s.html;
+  deck.appendChild(div);
+  const dot = document.createElement('span');
+  dot.onclick = () => goTo(i);
+  dotsWrap.appendChild(dot);
+});
+document.getElementById('counterTotal').textContent = slides.length;
+
+function render(){
+  document.querySelectorAll('.slide').forEach((el,i)=>{ el.classList.toggle('active', i===current); });
+  document.querySelectorAll('#dotsWrap span').forEach((d,i)=>{ d.classList.toggle('on', i===current); });
+  document.getElementById('counterNow').textContent = current+1;
+  document.getElementById('progressFill').style.width = ((current+1)/slides.length*100)+'%';
+  const s = slides[current];
+  const badge = document.getElementById('module-badge');
+  badge.textContent = 'MÓDULO ' + s.module + ' · ' + (s.mtype === 'teoria' ? 'TEORÍA' : 'PRÁCTICA');
+  badge.className = s.mtype === 'teoria' ? 'mod-teoria' : 'mod-practica';
+  const active = document.getElementById('slide-'+current);
+  const animEl = active.querySelector('.animate__animated');
+  if(animEl){ animEl.style.animationDuration = '.5s'; }
+}
+function goTo(i){ if(i<0 || i>=slides.length) return; current = i; render(); }
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.addEventListener('keydown', (e)=>{ if(e.key === 'ArrowRight') goTo(current+1); if(e.key === 'ArrowLeft') goTo(current-1); });
+render();
+
+const swalBase = { background: 'var(--bg-1)', color: 'var(--text)', customClass: { popup: 'so-popup', title: 'so-title' }, confirmButtonColor: '#d4a373', cancelButtonColor: '#6d7c8c' };
+
+async function askMC(title, text, options, correctIndex, explain){
+  const {value} = await Swal.fire({ ...swalBase, title, html: `<p style="text-align:left; color:var(--text-dim); margin-bottom:14px;">${text}</p>`, input: 'radio', inputOptions: Object.fromEntries(options.map((o,i)=>[i,o])), inputValidator: (v)=> !v && '¡Elegí una opción!', confirmButtonText: 'Responder' });
+  const correct = String(value) === String(correctIndex);
+  await Swal.fire({ ...swalBase, icon: correct ? 'success' : 'error', title: correct ? '¡Correcto!' : 'No exactamente...', html: `<p style="color:var(--text-dim);">${explain}</p>`, confirmButtonText: 'Seguir' });
+  return correct;
+}
+
+async function quizModulo1(){
+  await askMC(
+    'Guardar vs. persistir',
+    '¿Por qué un proceso puede "guardar" datos sin que eso signifique que persisten de verdad?',
+    ['Porque guardar y persistir son sinónimos exactos','Porque el cambio puede quedar solo en RAM si fs_crear/fs_escribir no bajan a disco','Porque los procesos no pueden usar archivos','Porque el disco de datos es de solo lectura'], 1,
+    'Si las funciones del sistema de archivos no llaman a bloque_escribir()/fs_persistir_inodos(), el cambio existe únicamente en RAM — se pierde al apagar, aunque "parezca" haberse guardado.'
+  );
+  await askMC(
+    'Probar persistencia',
+    '¿Cuál es la única forma válida de confirmar que algo persiste de verdad?',
+    ['Leerlo de nuevo en la misma sesión, sin reiniciar','Apagar por completo y volver a arrancar con el mismo disco de datos','Mirar el código y confirmar que compila','Preguntarle al profesor'], 1,
+    'Solo un apagado real seguido de un nuevo arranque con el MISMO archivo de disco prueba que los datos sobrevivieron — leerlo en la misma sesión no demuestra nada sobre persistencia.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 1 completo', text:'Ahora sí, a escribir el proceso.'});
+}
+
+async function quizModulo2(){
+  await askMC(
+    'itoa_simple',
+    '¿Por qué itoa_simple tiene un caso especial para cuando valor es 0?',
+    ['Porque 0 no es un numero valido','Porque el bucle while(valor > 0) nunca se ejecutaria y buf quedaria vacio','Porque itoa no puede manejar numeros pares','Es innecesario, se puede sacar'], 1,
+    'Con valor=0, la condición del while nunca se cumple ni una vez — sin el caso especial, la función devolvería un texto vacío en vez de "0".'
+  );
+  await askMC(
+    'El bug del vga_print',
+    '¿Por qué dos llamadas a vga_print en la misma fila pueden hacer pensar que la persistencia falló, cuando en realidad sí funcionó?',
+    ['Porque vga_print borra el disco','Porque cada llamada empieza a escribir desde la columna 0, pisando lo anterior','Porque vga_print solo funciona una vez por sesión','Porque el color se pierde entre llamadas'], 1,
+    'vga_print siempre arranca en la columna 0 de la fila indicada — la segunda llamada sobrescribe lo que dejó la primera, aunque el archivo en disco esté perfectamente guardado.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'Módulo 2 completo', text:'Ahora, a acoplarlo al kernel y probarlo de verdad.'});
+}
+
+async function quizFinal(){
+  await askMC(
+    'Orden en kmain()',
+    '¿Por qué fs_iniciar() tiene que llamarse ANTES de crear_proceso(proceso_contador_persistente)?',
+    ['Por una convención de estilo, sin razón técnica','Porque si no, la tabla de inodos no está montada y fs_buscar() nunca va a encontrar el archivo anterior','Porque crear_proceso() necesita el resultado de fs_iniciar() como parámetro','No importa el orden, el scheduler los reordena solo'], 1,
+    'Sin fs_iniciar() ejecutado antes, la tabla de inodos en RAM no refleja lo que hay en disco — el proceso corre sin errores, pero "cree" que nunca existió el archivo.'
+  );
+  await askMC(
+    'Checklist',
+    'Si un equipo prueba su proceso y "no ve persistencia", ¿cuál NO es uno de los 5 motivos típicos revisados hoy?',
+    ['Llamar fs_iniciar() después de crear el proceso','Probar con un data.img distinto cada vez sin darse cuenta','Que el disco QEMU tenga más de 16 MB de tamaño','Un bug de vga_print pisando la fila'], 2,
+    'El tamaño del disco de datos no es, por sí mismo, un motivo típico de falla — con que sea suficientemente grande para los sectores que usamos, alcanza.'
+  );
+  await askMC(
+    'La prueba real',
+    '¿Qué demuestra de forma concluyente que la persistencia funciona?',
+    ['Que el código compile sin errores','Ver el número subir (1, 2, 3...) entre arranques reales y separados, con el mismo disco','Que el quiz de la clase se responda bien','Que fs_crear() devuelva un inodo válido'], 1,
+    'Solo ver el valor incrementarse entre arranques REALMENTE separados (apagando y prendiendo QEMU) demuestra persistencia — todo lo demás puede fallar en silencio.'
+  );
+  Swal.fire({...swalBase, icon:'success', title:'¡Clase completa!', text:'Ahora a probarlo con su propio kernel — dos arranques, un mismo disco.'});
+}
+</script>
+</body>
+</html>

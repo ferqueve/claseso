@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Del Toy OS al hardware real</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root{--bg:#07111f;--panel:#0e1d31;--ink:#f4f8ff;--muted:#a9b9cc;--accent:#62d7ff;--accent2:#a78bfa;--ok:#42d392;--warn:#ffcb6b;--bad:#ff758f}
+    *{box-sizing:border-box} html,body{height:100%;overflow:hidden} body{margin:0;background:radial-gradient(circle at 85% 15%,#18395a 0,#07111f 46%,#030812 100%);color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}
+    .deck{height:100%;position:relative}.slide{position:absolute;inset:0;display:none;padding:5vh 6vw 8vh;overflow-y:auto}.slide.active{display:flex;flex-direction:column;justify-content:center}.eyebrow{color:var(--accent);font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:.82rem}.display-title{font-weight:900;line-height:.98;font-size:clamp(2.6rem,7vw,6.8rem);letter-spacing:-.05em}.lead{color:#d5e1ef;font-size:clamp(1.1rem,2vw,1.6rem);max-width:1000px}.muted{color:var(--muted)}
+    .glass{background:linear-gradient(145deg,rgba(20,43,70,.93),rgba(8,20,36,.93));border:1px solid rgba(137,194,232,.2);box-shadow:0 20px 60px rgba(0,0,0,.28);border-radius:24px}.cardish{padding:1.25rem;height:100%}.icon-box{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:rgba(98,215,255,.12);color:var(--accent);font-size:1.6rem}.big-number{font-size:clamp(3rem,7vw,6rem);font-weight:900;color:var(--accent)}
+    .pill{display:inline-flex;align-items:center;gap:.5rem;border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:.45rem .8rem;color:#dbe9f8;background:rgba(255,255,255,.05)}
+    .code{font-family:Consolas,monospace;background:#020711;border:1px solid rgba(98,215,255,.18);border-radius:18px;padding:1rem;color:#bdeeff;white-space:pre-wrap}.arrow{color:var(--accent);font-size:1.7rem}.good{color:var(--ok)}.warning{color:var(--warn)}.bad{color:var(--bad)}
+    .device{transition:.2s transform,.2s border-color;cursor:pointer}.device:hover{transform:translateY(-5px);border-color:rgba(98,215,255,.65)}
+    .progress-wrap{position:fixed;left:0;right:0;bottom:0;height:5px;background:rgba(255,255,255,.08);z-index:10}.progress-bar-custom{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:.25s}
+    .controls{position:fixed;right:20px;bottom:18px;z-index:20;display:flex;gap:.55rem}.controls button{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(7,17,31,.8);color:white;backdrop-filter:blur(8px)}
+    .counter{position:fixed;left:20px;bottom:17px;z-index:20;color:var(--muted);font-variant-numeric:tabular-nums}.table-dark-custom{--bs-table-bg:transparent;--bs-table-color:#eef7ff;--bs-table-border-color:rgba(255,255,255,.12)}
+    .layer{padding:.72rem 1rem;border-radius:14px;margin:.35rem 0;border-left:5px solid var(--accent);background:rgba(255,255,255,.055)}
+    .swap{border-left-color:var(--bad)}.keep{border-left-color:var(--ok)}.adapt{border-left-color:var(--warn)}
+    .timeline{border-left:3px solid rgba(98,215,255,.35);padding-left:1.4rem}.timeline .step{position:relative;margin:0 0 1.2rem}.timeline .step:before{content:"";position:absolute;left:-1.83rem;top:.35rem;width:.8rem;height:.8rem;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px rgba(98,215,255,.12)}
+    kbd{background:#14263c;border:1px solid #31506d;color:#fff}.swal2-popup{background:#0e1d31!important;color:#fff!important;border:1px solid rgba(98,215,255,.3)!important}.swal2-title,.swal2-html-container{color:#fff!important}
+    @media(max-width:768px){.slide{padding:4vh 5vw 11vh}.display-title{font-size:3rem}.hide-mobile{display:none}}
+  </style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<section class="slide active">
+  <div class="eyebrow mb-3">Sistemas Operativos · Intensivo</div>
+  <h1 class="display-title animate__animated animate__fadeInUp">Del <span style="color:var(--accent)">Toy OS</span><br>al hardware real</h1>
+  <p class="lead mt-4 animate__animated animate__fadeInUp animate__delay-1s">Qué debemos conservar, adaptar o reescribir para ejecutar nuestro sistema en una Raspberry Pi, una mini PC x86 u otro dispositivo de bajo consumo.</p>
+  <div class="d-flex gap-2 flex-wrap mt-4"><span class="pill"><i class="fa-solid fa-microchip"></i> x86 → ARM</span><span class="pill"><i class="fa-solid fa-layer-group"></i> Capa de hardware</span><span class="pill"><i class="fa-solid fa-bolt"></i> Bajo consumo</span></div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Punto de partida</div><h2 class="display-3 fw-bold mb-4">¿Qué construimos?</h2>
+  <div class="row g-4">
+    <div class="col-lg-7"><div class="glass cardish">
+      <div class="layer">Bootloader BIOS de 512 bytes en ensamblador x86</div>
+      <div class="layer">Carga del kernel desde disco con <code>INT 13h</code></div>
+      <div class="layer">GDT y paso de modo real a modo protegido de 32 bits</div>
+      <div class="layer">Kernel C: memoria, procesos, semáforos, sistema de archivos en RAM</div>
+      <div class="layer">VGA texto en <code>0xB8000</code>, teclado PS/2 y PIC 8259</div>
+    </div></div>
+    <div class="col-lg-5"><div class="glass cardish d-flex flex-column justify-content-center align-items-center text-center"><i class="fa-solid fa-computer fa-5x mb-4" style="color:var(--accent)"></i><h3>Plataforma objetivo actual</h3><p class="muted fs-5">PC compatible IBM · x86 · BIOS · VGA · puertos de E/S</p></div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">La idea clave</div><h2 class="display-3 fw-bold">“Pequeño” no significa “universal”</h2>
+  <p class="lead mt-3">El sistema necesita poca RAM y poca CPU, pero depende profundamente de la arquitectura y de los controladores del hardware.</p>
+  <div class="row g-4 mt-2">
+    <div class="col-md-4"><div class="glass cardish text-center"><div class="big-number">≈1 MB</div><p class="muted">RAM suficiente para esta escala</p></div></div>
+    <div class="col-md-4"><div class="glass cardish text-center"><div class="big-number">386+</div><p class="muted">CPU x86 mínima por el modo protegido de 32 bits</p></div></div>
+    <div class="col-md-4"><div class="glass cardish text-center"><div class="big-number">15</div><p class="muted">sectores cargados actualmente por el bootloader</p></div></div>
+  </div>
+  <p class="mt-4 warning"><i class="fa-solid fa-triangle-exclamation me-2"></i>El límite real no es la potencia: es la compatibilidad con BIOS, x86, VGA, PIC y PS/2.</p>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Comparación de destinos</div><h2 class="display-4 fw-bold mb-4">¿Dónde resulta más fácil ejecutarlo?</h2>
+  <div class="table-responsive glass p-3"><table class="table table-dark-custom align-middle mb-0">
+    <thead><tr><th>Dispositivo</th><th>CPU</th><th>Arranque</th><th>Cambios</th><th>Viabilidad</th></tr></thead>
+    <tbody>
+      <tr><td><i class="fa-solid fa-desktop me-2"></i>PC antigua</td><td>x86</td><td>BIOS Legacy</td><td>Pocos</td><td class="good fw-bold">Muy alta</td></tr>
+      <tr><td><i class="fa-solid fa-box me-2"></i>Mini PC / thin client x86</td><td>x86/x86-64</td><td>BIOS o UEFI</td><td>Pocos o moderados</td><td class="good fw-bold">Alta</td></tr>
+      <tr><td><i class="fa-brands fa-raspberry-pi me-2"></i>Raspberry Pi</td><td>ARM</td><td>Firmware propio</td><td>Muchos</td><td class="warning fw-bold">Port completo</td></tr>
+      <tr><td><i class="fa-solid fa-memory me-2"></i>Micro:bit / Arduino</td><td>Microcontrolador</td><td>Firmware</td><td>Casi todo</td><td class="bad fw-bold">Otro proyecto</td></tr>
+      <tr><td><i class="fa-solid fa-code-branch me-2"></i>Placa RISC-V</td><td>RISC-V</td><td>SBI/firmware</td><td>Muchos</td><td class="warning fw-bold">Port educativo</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Ruta rápida</div><h2 class="display-4 fw-bold">Mini PC x86: conservar casi todo</h2>
+  <div class="row g-4 mt-2">
+    <div class="col-lg-6"><div class="glass cardish"><h3 class="good"><i class="fa-solid fa-check me-2"></i>Podemos conservar</h3><div class="layer keep">Código C del kernel</div><div class="layer keep">GDT, IDT y modo protegido</div><div class="layer keep">Scheduler, semáforos y allocator</div><div class="layer keep">Sistema de archivos en RAM</div><div class="layer keep">Aplicaciones y lógica de interfaz</div></div></div>
+    <div class="col-lg-6"><div class="glass cardish"><h3 class="warning"><i class="fa-solid fa-wrench me-2"></i>Tal vez adaptar</h3><div class="layer adapt">Arranque UEFI si no existe modo Legacy</div><div class="layer adapt">Framebuffer si no hay VGA texto</div><div class="layer adapt">USB HID si no se emula teclado PS/2</div><div class="layer adapt">APIC en lugar del PIC 8259</div><div class="layer adapt">Lectura de disco más robusta</div></div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Port a Raspberry Pi</div><h2 class="display-4 fw-bold mb-4">Qué debemos reemplazar</h2>
+  <div class="row g-3">
+    <div class="col-md-6"><div class="glass cardish"><h3><i class="fa-solid fa-power-off me-2 bad"></i>Arranque</h3><p class="muted">Eliminar MBR, BIOS e <code>INT 13h</code>. Crear una imagen ARM que el firmware de la Raspberry pueda cargar.</p></div></div>
+    <div class="col-md-6"><div class="glass cardish"><h3><i class="fa-solid fa-microchip me-2 bad"></i>CPU</h3><p class="muted">Reescribir el ensamblador x86: pila, entrada, cambio de contexto, excepciones y registros.</p></div></div>
+    <div class="col-md-6"><div class="glass cardish"><h3><i class="fa-solid fa-display me-2 bad"></i>Pantalla</h3><p class="muted">Reemplazar <code>0xB8000</code> por UART o framebuffer y dibujar caracteres como píxeles.</p></div></div>
+    <div class="col-md-6"><div class="glass cardish"><h3><i class="fa-solid fa-keyboard me-2 bad"></i>Entrada</h3><p class="muted">Reemplazar puerto <code>0x60</code> y scancodes PS/2 por UART o un driver USB HID.</p></div></div>
+    <div class="col-md-6"><div class="glass cardish"><h3><i class="fa-solid fa-bell me-2 bad"></i>Interrupciones</h3><p class="muted">Sustituir IDT/PIC 8259 por vectores de excepción ARM y el controlador de interrupciones del SoC.</p></div></div>
+    <div class="col-md-6"><div class="glass cardish"><h3><i class="fa-solid fa-clock me-2 bad"></i>Temporizador</h3><p class="muted">Programar el timer del SoC para reloj, espera y planificación.</p></div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">No todo se pierde</div><h2 class="display-4 fw-bold">Qué código puede sobrevivir al port</h2>
+  <div class="row g-4 mt-1">
+    <div class="col-lg-5"><div class="glass cardish"><h3 class="good">Reutilizable</h3><ul class="fs-5"><li>Algoritmos del scheduler</li><li>Semáforos y estados de procesos</li><li>Allocator y estructuras de memoria</li><li>Sistema de archivos simulado</li><li>Shell, editor, reloj y juegos</li><li>Funciones de strings y utilidades</li></ul></div></div>
+    <div class="col-lg-7"><div class="glass cardish"><h3>La solución: una HAL</h3><p class="muted">Separar las políticas del kernel de los detalles de cada placa.</p><div class="code">kernel común
+ ├── procesos / scheduler
+ ├── memoria / semáforos
+ ├── filesystem / aplicaciones
+ └── HAL
+      ├── hal_x86.c  → VGA, PIC, PS/2, puertos
+      └── hal_rpi.c  → UART, timer, IRQ, framebuffer</div></div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Primera Raspberry viable</div><h2 class="display-4 fw-bold">Empezar sin HDMI ni USB</h2>
+  <p class="lead">Para reducir drásticamente la complejidad, la primera versión debería usar una consola serie.</p>
+  <div class="row g-4 mt-2 align-items-center">
+    <div class="col-lg-7"><div class="timeline">
+      <div class="step"><h4>1. Arranque mínimo ARM</h4><p class="muted">Inicializar CPU y pila; llamar a <code>kmain()</code>.</p></div>
+      <div class="step"><h4>2. UART como pantalla y teclado</h4><p class="muted">Enviar y recibir caracteres por un adaptador USB–TTL.</p></div>
+      <div class="step"><h4>3. Timer e interrupciones</h4><p class="muted">Recuperar el reloj y luego la planificación.</p></div>
+      <div class="step"><h4>4. Framebuffer</h4><p class="muted">Agregar salida HDMI cuando la base sea estable.</p></div>
+      <div class="step"><h4>5. USB</h4><p class="muted">Dejar el teclado USB para una etapa avanzada.</p></div>
+    </div></div>
+    <div class="col-lg-5"><div class="glass cardish text-center"><i class="fa-solid fa-terminal fa-5x mb-4" style="color:var(--accent)"></i><h3>Raspberry Pi ↔ USB–TTL ↔ PC</h3><p class="muted">La terminal del PC actúa inicialmente como monitor y teclado.</p></div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Estructura propuesta</div><h2 class="display-4 fw-bold mb-3">Organizar el código para dos arquitecturas</h2>
+  <div class="code fs-5">toy-os/
+├── kernel/              # código común en C
+│   ├── scheduler.c
+│   ├── semaforo.c
+│   ├── kmalloc.c
+│   ├── fs.c
+│   └── aplicaciones/
+├── arch/
+│   ├── x86/
+│   │   ├── boot.asm
+│   │   ├── idt.c
+│   │   ├── pic.c
+│   │   └── video_vga.c
+│   └── arm-rpi/
+│       ├── start.S
+│       ├── vectors.S
+│       ├── uart.c
+│       ├── timer.c
+│       └── framebuffer.c
+├── include/hal.h
+└── Makefile</div>
+  <p class="mt-3 muted">El mismo <code>kmain()</code> llama a funciones abstractas: <code>hal_putchar()</code>, <code>hal_getchar()</code>, <code>hal_timer_init()</code>.</p>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Ejemplo de abstracción</div><h2 class="display-4 fw-bold">Una función, dos implementaciones</h2>
+  <div class="row g-4">
+    <div class="col-lg-4"><div class="glass cardish"><h4>Interfaz común</h4><div class="code">void hal_putchar(char c);
+char hal_getchar(void);
+void hal_timer_init(void);</div></div></div>
+    <div class="col-lg-4"><div class="glass cardish"><h4>x86</h4><div class="code">void hal_putchar(char c) {
+  /* escribir en 0xB8000 */
+}</div></div></div>
+    <div class="col-lg-4"><div class="glass cardish"><h4>Raspberry</h4><div class="code">void hal_putchar(char c) {
+  /* enviar por UART */
+}</div></div></div>
+  </div>
+  <p class="lead mt-4">El shell y los juegos llaman a <code>hal_putchar()</code>; no necesitan saber qué placa existe debajo.</p>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Esfuerzo comparado</div><h2 class="display-4 fw-bold mb-4">Qué proyecto elegir</h2>
+  <div class="row g-4">
+    <div class="col-lg-4"><div class="glass cardish device" onclick="showChoice('x86')"><div class="icon-box mb-3"><i class="fa-solid fa-box"></i></div><h3>Mini PC x86</h3><p class="muted">Objetivo: demostrar el Toy OS en hardware real rápidamente.</p><div class="pill good"><i class="fa-solid fa-gauge-high"></i> Esfuerzo bajo</div></div></div>
+    <div class="col-lg-4"><div class="glass cardish device" onclick="showChoice('uefi')"><div class="icon-box mb-3"><i class="fa-solid fa-laptop"></i></div><h3>x86 con UEFI</h3><p class="muted">Objetivo: modernizar el arranque y la salida gráfica.</p><div class="pill warning"><i class="fa-solid fa-gauge"></i> Esfuerzo medio</div></div></div>
+    <div class="col-lg-4"><div class="glass cardish device" onclick="showChoice('rpi')"><div class="icon-box mb-3"><i class="fa-brands fa-raspberry-pi"></i></div><h3>Raspberry Pi</h3><p class="muted">Objetivo: aprender portabilidad, ARM y drivers.</p><div class="pill bad"><i class="fa-solid fa-mountain"></i> Esfuerzo alto</div></div></div>
+  </div>
+  <p class="muted mt-3"><i class="fa-solid fa-hand-pointer me-2"></i>Selecciona una opción.</p>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Hoja de ruta sugerida</div><h2 class="display-4 fw-bold">De QEMU a Raspberry, sin saltos imposibles</h2>
+  <div class="row g-3 mt-1">
+    <div class="col-md-3"><div class="glass cardish"><span class="big-number">1</span><h4>PC real Legacy</h4><p class="muted">Ajustar pila, tamaño de kernel y arranque USB.</p></div></div>
+    <div class="col-md-3"><div class="glass cardish"><span class="big-number">2</span><h4>Crear la HAL</h4><p class="muted">Desacoplar consola, teclado, timer e IRQ.</p></div></div>
+    <div class="col-md-3"><div class="glass cardish"><span class="big-number">3</span><h4>ARM + UART</h4><p class="muted">Primer kernel Raspberry sin HDMI ni USB.</p></div></div>
+    <div class="col-md-3"><div class="glass cardish"><span class="big-number">4</span><h4>Framebuffer + USB</h4><p class="muted">Convertirlo en un sistema autónomo.</p></div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Comprobación</div><h2 class="display-4 fw-bold">¿Qué cambiarías primero?</h2>
+  <p class="lead">Para llevarlo a Raspberry Pi con el menor riesgo, ¿cuál sería la primera salida de texto recomendable?</p>
+  <div class="d-grid gap-3 col-lg-8 mt-4">
+    <button class="btn btn-outline-light btn-lg text-start" onclick="quiz(false)"><i class="fa-solid fa-tv me-3"></i>Implementar inmediatamente HDMI y fuentes gráficas</button>
+    <button class="btn btn-outline-light btn-lg text-start" onclick="quiz(true)"><i class="fa-solid fa-terminal me-3"></i>Usar UART y una terminal serie</button>
+    <button class="btn btn-outline-light btn-lg text-start" onclick="quiz(false)"><i class="fa-solid fa-keyboard me-3"></i>Escribir primero un stack USB completo</button>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="eyebrow">Conclusión</div><h2 class="display-title" style="font-size:clamp(2.5rem,6vw,5.8rem)">La mini PC lo <span class="good">ejecuta</span>.<br>La Raspberry lo obliga a <span style="color:var(--accent)">evolucionar</span>.</h2>
+  <p class="lead mt-4">En x86 buscamos compatibilidad. En ARM aprendemos portabilidad: separar kernel, arquitectura y drivers.</p>
+  <div class="glass cardish mt-4"><h3 class="mb-2"><i class="fa-solid fa-graduation-cap me-2"></i>El aprendizaje más valioso</h3><p class="fs-5 mb-0 muted">Un sistema operativo no es únicamente código C: es un contrato entre el kernel, la arquitectura del procesador, el firmware y cada dispositivo físico.</p></div>
+</section>
+
+</div>
+<div class="counter" id="counter">1 / 14</div>
+<div class="controls"><button onclick="prevSlide()" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button><button onclick="nextSlide()" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button><button onclick="toggleFull()" aria-label="Pantalla completa"><i class="fa-solid fa-expand"></i></button></div>
+<div class="progress-wrap"><div class="progress-bar-custom" id="progress"></div></div>
+<script>
+  const slides=[...document.querySelectorAll('.slide')]; let current=0;
+  function render(){slides.forEach((s,i)=>s.classList.toggle('active',i===current)); const active=slides[current]; active.classList.remove('animate__animated','animate__fadeIn'); void active.offsetWidth; active.classList.add('animate__animated','animate__fadeIn'); document.getElementById('counter').textContent=`${current+1} / ${slides.length}`;document.getElementById('progress').style.width=`${((current+1)/slides.length)*100}%`;}
+  function nextSlide(){current=Math.min(current+1,slides.length-1);render()} function prevSlide(){current=Math.max(current-1,0);render()}
+  function toggleFull(){if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()}
+  document.addEventListener('keydown',e=>{if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();nextSlide()} if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prevSlide()} if(e.key==='Home'){current=0;render()} if(e.key==='End'){current=slides.length-1;render()} if(e.key.toLowerCase()==='f')toggleFull()});
+  function showChoice(kind){const data={x86:['Mini PC x86','La ruta más directa: prueben primero BIOS Legacy, VGA y teclado compatible. Ideal para demostrar el sistema funcionando fuera de QEMU.','success'],uefi:['x86 con UEFI','Conserva el kernel y la arquitectura, pero exige un nuevo cargador, mapa de memoria y probablemente framebuffer.','info'],rpi:['Raspberry Pi','Es un port auténtico: nuevo arranque ARM, UART, timer, excepciones e interrupciones. Conviene comenzar con una HAL.','warning']}[kind];Swal.fire({title:data[0],text:data[1],icon:data[2],confirmButtonText:'Entendido',confirmButtonColor:'#149eca'});}
+  function quiz(ok){Swal.fire(ok?{icon:'success',title:'Correcto',html:'UART permite validar el arranque, la entrada y la salida sin implementar todavía HDMI ni USB.',confirmButtonText:'Continuar',confirmButtonColor:'#149eca'}:{icon:'error',title:'No sería el primer paso',html:'HDMI y USB agregan mucha complejidad. Una consola UART reduce el problema a enviar y recibir bytes.',confirmButtonText:'Reintentar',confirmButtonColor:'#149eca'});}
+  render();
+</script>
+</body>
+</html>
